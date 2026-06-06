@@ -79,6 +79,15 @@ export default function UsernameScreen() {
     setIsSubmitting(true)
 
     try {
+      // Confirm the Supabase client has an active session before writing.
+      // signUp with email confirmation enabled returns no session; without
+      // this check the update fails with a cryptic PGRST116 error.
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setSaveError('no active session — please sign in to continue')
+        return
+      }
+
       await updateProfile({ username: username.trim().toLowerCase() })
       if (supabaseUser) {
         await fetchProfile(supabaseUser.id)

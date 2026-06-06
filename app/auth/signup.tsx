@@ -24,6 +24,7 @@ export default function SignupScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
+  const [needsVerification, setNeedsVerification] = useState(false)
 
   async function handleSignUp() {
     if (!email || !password) {
@@ -34,12 +35,46 @@ export default function SignupScreen() {
       setError(null)
       setIsLoading(true)
       await signUpWithEmail(email.trim(), password)
-      router.replace('/auth/username')
+      // If Supabase requires email confirmation, signUp returns no session.
+      // Route to username screen only when we have an active session.
+      const { session } = useAuthStore.getState()
+      if (session) {
+        router.replace('/auth/username')
+      } else {
+        setNeedsVerification(true)
+      }
     } catch (e: any) {
       setError(e?.message ?? 'Sign up failed')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (needsVerification) {
+    return (
+      <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={s.scrollContent}>
+          <View style={[s.headingArea, { marginTop: 80 }]}>
+            <Text style={s.headingItalic}>almost there</Text>
+            <Text style={s.headingBold}>check your email</Text>
+          </View>
+          <Text style={[s.verifyBody]}>
+            we sent a verification link to{'\n'}
+            <Text style={s.verifyEmail}>{email.trim()}</Text>
+          </Text>
+          <Text style={[s.verifyHint]}>
+            click the link in the email, then come back and sign in to finish setting up your account.
+          </Text>
+          <TouchableOpacity
+            style={[s.createBtn, { marginTop: 40 }]}
+            onPress={() => router.replace('/auth/login')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.createBtnText}>sign in after verifying</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    )
   }
 
   return (
@@ -208,5 +243,23 @@ const s = StyleSheet.create({
     fontFamily: F.mono,
     fontSize: 12,
     color: C.accent,
+  },
+  verifyBody: {
+    fontFamily: F.mono,
+    fontSize: 14,
+    color: C.muted,
+    marginTop: 20,
+    lineHeight: 22,
+  },
+  verifyEmail: {
+    fontFamily: F.monoMedium,
+    color: C.text,
+  },
+  verifyHint: {
+    fontFamily: F.mono,
+    fontSize: 12,
+    color: C.muted,
+    marginTop: 16,
+    lineHeight: 18,
   },
 })
