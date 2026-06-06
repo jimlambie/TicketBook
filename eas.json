@@ -24,7 +24,18 @@
       "env": {
         "EXPO_PUBLIC_ENV": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://vmrtdwyfkzlryckifkpf.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtcnRkd3lma3pscnlja2lma3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzOTc3MjEsImV4cCI6MjA5Mzk3MzcyMX0.ahae4YxLfVrGqABdLKKDo1LwDAuponiH7KvqObBSjvk"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtcnRkd3lma3pscnlja2lma3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzOTc3MjEsImV4cCI6MjA5Mzk3MzcyMX0.ahae4YxLfVrGqABdLKKDo1LwDAuponiH7KvqObBSjvk",
+        "EXPO_PUBLIC_SETLISTFM_API_KEY": "AKcYbY0Y8u84t5y-gvJaQinLmnmXJrGw24Ef"
+      }
+    },
+    "testing": {
+      "extends": "development",
+      "developmentClient": false,
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
       }
     },
     "staging": {
