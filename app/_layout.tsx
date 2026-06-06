@@ -40,18 +40,16 @@ export default function RootLayout() {
     initialize()
   }, [])
 
-  // Navigate on session changes after the initial load.
-  // index.tsx handles routing on first render; this effect handles
-  // subsequent changes: OAuth callback, email sign-in, sign-out.
+  // Handles sign-out only. Sign-in navigation is handled by the individual
+  // auth screens (login.tsx explicit redirect, welcome.tsx session watcher).
+  // index.tsx covers the cold-start case.
   useEffect(() => {
     if (isLoading) return
     if (!didInit.current) {
       didInit.current = true
       return
     }
-    if (session) {
-      router.replace('/(tabs)/feed')
-    } else {
+    if (!session) {
       router.replace('/auth/onboarding')
     }
   }, [session?.user?.id, isLoading])

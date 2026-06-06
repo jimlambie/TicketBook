@@ -23,6 +23,7 @@ export default function UsernameScreen() {
 
   const [username, setUsername] = useState('')
   const [checkStatus, setCheckStatus] = useState<CheckStatus>('idle')
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [isFocused, setIsFocused] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -32,6 +33,7 @@ export default function UsernameScreen() {
       clearTimeout(debounceRef.current)
     }
 
+    setSaveError(null)
     const trimmed = username.trim().toLowerCase()
 
     if (trimmed.length === 0) {
@@ -51,6 +53,7 @@ export default function UsernameScreen() {
         .from('users')
         .select('id')
         .eq('username', trimmed)
+        .neq('id', supabaseUser?.id ?? '')
         .maybeSingle()
 
       if (data) {
@@ -72,17 +75,22 @@ export default function UsernameScreen() {
       return
     }
 
+    setSaveError(null)
+    setIsSubmitting(true)
+
     try {
-      setIsSubmitting(true)
       await updateProfile({ username: username.trim().toLowerCase() })
-      
       if (supabaseUser) {
         await fetchProfile(supabaseUser.id)
       }
-      
       router.replace('/(tabs)/feed')
     } catch (e: any) {
-      setCheckStatus('taken')
+      // Postgres unique violation (23505) means the name was claimed since the check ran
+      if (e?.code === '23505') {
+        setCheckStatus('taken')
+      } else {
+        setSaveError(e?.message ?? 'could not save, please try again')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -132,18 +140,17 @@ export default function UsernameScreen() {
           </View>
 
           <View style={s.statusRow}>
-            {checkStatus === 'checking' && (
+            {saveError ? (
+              <Text style={s.statusTaken}>{saveError}</Text>
+            ) : checkStatus === 'checking' ? (
               <Text style={s.statusChecking}>checking…</Text>
-            )}
-            {checkStatus === 'available' && (
+            ) : checkStatus === 'available' ? (
               <Text style={s.statusAvailable}>✓ available</Text>
-            )}
-            {checkStatus === 'taken' && (
+            ) : checkStatus === 'taken' ? (
               <Text style={s.statusTaken}>already taken</Text>
-            )}
-            {checkStatus === 'invalid' && (
+            ) : checkStatus === 'invalid' ? (
               <Text style={s.statusInvalid}>letters, numbers and _ only</Text>
-            )}
+            ) : null}
           </View>
         </View>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -14,8 +14,16 @@ import { C, F } from '@/constants/design'
 
 export default function WelcomeScreen() {
   const router = useRouter()
-  const { signInWithGoogle, signInWithApple } = useAuthStore()
+  const { signInWithGoogle, signInWithApple, session } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
+
+  // Handles OAuth return: the deep-link callback fires onAuthStateChange,
+  // which sets session in the store. This effect catches that and navigates.
+  useEffect(() => {
+    if (session) {
+      router.replace('/(tabs)/feed')
+    }
+  }, [session?.user?.id])
 
   async function handleGoogle() {
     try {

@@ -36,6 +36,7 @@ export default function LoginScreen() {
       setIsLoading(true)
     
       await signInWithEmail(email.trim(), password)
+      router.replace('/(tabs)/feed')
     } catch (e: any) {
       setError(e?.message ?? 'Sign in failed')
     } finally {
