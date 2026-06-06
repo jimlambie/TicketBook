@@ -22,6 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.0',
   owner: 'jimlambie',
   orientation: 'portrait',
+  scheme: 'ticketbook',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   splash: {
