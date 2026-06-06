@@ -100,21 +100,21 @@ const s = StyleSheet.create({
   },
   wordmark: {
     fontFamily: F.display,
-    fontSize: 44,
-    letterSpacing: -0.88,
+    fontSize: 52,
+    letterSpacing: -1.04,
     color: C.text,
   },
   tagline: {
     fontFamily: F.displayItalic,
-    fontSize: 18,
+    fontSize: 19,
     color: C.accent,
-    marginTop: 6,
+    marginTop: 10,
   },
   counter: {
     fontFamily: F.mono,
     fontSize: 11,
     color: C.muted,
-    marginTop: 8,
+    marginTop: 14,
   },
   actions: {
     gap: 12,

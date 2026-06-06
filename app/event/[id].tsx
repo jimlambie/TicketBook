@@ -770,12 +770,12 @@ const s = StyleSheet.create({
   // Body
   body: {
     padding: 20,
-    gap: 20,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 16,
   },
   stars: {
     flexDirection: 'row',
@@ -787,7 +787,8 @@ const s = StyleSheet.create({
     color: C.muted,
   },
   detailRows: {
-    gap: 10,
+    gap: 12,
+    marginBottom: 28,
   },
   detailRow: {
     flexDirection: 'row',
@@ -810,6 +811,7 @@ const s = StyleSheet.create({
     borderRadius: C.radius,
     padding: 14,
     gap: 8,
+    marginBottom: 24,
   },
   reviewLabel: {
     fontFamily: F.mono,
@@ -948,6 +950,7 @@ const s = StyleSheet.create({
   // Media
   mediaSection: {
     gap: 10,
+    marginBottom: 24,
   },
   sectionLabel: {
     fontFamily: F.mono,
@@ -955,7 +958,7 @@ const s = StyleSheet.create({
     color: C.muted,
     letterSpacing: 0.08 * 9,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   ticketImageWrap: {
     borderRadius: C.radius,
@@ -994,6 +997,7 @@ const s = StyleSheet.create({
   // Setlist
   setlistSection: {
     gap: 0,
+    marginBottom: 28,
   },
   songRow: {
     flexDirection: 'row',
@@ -1046,6 +1050,7 @@ const s = StyleSheet.create({
   // Lineups
   lineupsSection: {
     gap: 0,
+    marginBottom: 24,
   },
   lineupsColumns: {
     flexDirection: 'row',

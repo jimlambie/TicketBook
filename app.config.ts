@@ -4,9 +4,9 @@ const IS_DEV = process.env.EXPO_PUBLIC_ENV === 'development'
 const IS_STAGING = process.env.EXPO_PUBLIC_ENV === 'staging'
 
 const getUniqueIdentifier = () => {
-  if (IS_DEV) return 'com.yourco.ticketbook.dev'
-  if (IS_STAGING) return 'com.yourco.ticketbook.staging'
-  return 'com.yourco.ticketbook'
+  if (IS_DEV) return 'com.bricksandgiggles.ticketbook.dev'
+  if (IS_STAGING) return 'com.bricksandgiggles.ticketbook.staging'
+  return 'com.bricksandgiggles.ticketbook'
 }
 
 const getAppName = () => {
@@ -20,29 +20,32 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: getAppName(),
   slug: 'ticketbook',
   version: '1.0.0',
+  owner: 'jimlambie',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   splash: {
     image: './assets/splash.png',
     resizeMode: 'contain',
-    backgroundColor: '#0f0e0c',
+    backgroundColor: '#0f0e0c'
   },
   assetBundlePatterns: ['**/*'],
   ios: {
     bundleIdentifier: getUniqueIdentifier(),
     supportsTablet: false,
     infoPlist: {
-      NSCameraUsageDescription: 'Used to scan and upload ticket photos and event images.',
-      NSPhotoLibraryUsageDescription: 'Used to upload photos and tickets from your library.',
-      NSContactsUsageDescription: 'Used to find friends already on TicketBook.',
-    },
+      NSCameraUsageDescription:
+        'Used to scan and upload ticket photos and event images.',
+      NSPhotoLibraryUsageDescription:
+        'Used to upload photos and tickets from your library.',
+      NSContactsUsageDescription: 'Used to find friends already on TicketBook.'
+    }
   },
   android: {
     package: getUniqueIdentifier(),
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#0f0e0c',
+      backgroundColor: '#0f0e0c'
     },
     permissions: [
       'CAMERA',
@@ -50,8 +53,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'READ_MEDIA_VIDEO',
       'READ_CONTACTS',
       'RECEIVE_BOOT_COMPLETED',
-      'VIBRATE',
-    ],
+      'VIBRATE'
+    ]
   },
   plugins: [
     'expo-router',
@@ -59,42 +62,43 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-image-picker',
       {
-        photosPermission: 'Used to upload photos and tickets from your library.',
-        cameraPermission: 'Used to scan and upload ticket photos.',
-      },
+        photosPermission:
+          'Used to upload photos and tickets from your library.',
+        cameraPermission: 'Used to scan and upload ticket photos.'
+      }
     ],
     [
       'expo-camera',
       {
-        cameraPermission: 'Used to scan QR codes to add friends.',
-      },
+        cameraPermission: 'Used to scan QR codes to add friends.'
+      }
     ],
     [
       'expo-notifications',
       {
         icon: './assets/notification-icon.png',
-        color: '#e8c547',
-      },
+        color: '#e8c547'
+      }
     ],
     'expo-font',
-    'expo-localization',
+    'expo-localization'
   ],
   experiments: {
-    typedRoutes: true,
+    typedRoutes: true
   },
   extra: {
     eas: {
-      projectId: 'your-eas-project-id',
+      projectId: 'a935452d-42f0-4cd1-80c5-94efdc0ee4b6'
     },
     router: {
-      origin: false,
-    },
+      origin: false
+    }
   },
   updates: {
-    url: 'https://u.expo.dev/your-eas-project-id',
-    fallbackToCacheTimeout: 0,
+    url: 'https://u.expo.dev/a935452d-42f0-4cd1-80c5-94efdc0ee4b6',
+    fallbackToCacheTimeout: 0
   },
   runtimeVersion: {
-    policy: 'appVersion',
-  },
+    policy: 'appVersion'
+  }
 })

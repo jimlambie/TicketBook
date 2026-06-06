@@ -135,8 +135,6 @@ export default function NewEventScreen() {
 
       const eventId = event.id
 
-      console.log('draft :>> ', draft);
-
       if (draft.ticketImageUri) {
         try {
           await uploadMedia.mutateAsync({
@@ -198,7 +196,16 @@ export default function NewEventScreen() {
       }
 
       clearDraft()
-      router.replace('/(tabs)/feed')
+      router.replace({
+        pathname: '/event/success',
+        params: {
+          stubNumber: String(event.stub_number ?? 0),
+          artist: buildTitle(draft),
+          date: draft.date,
+          type: draft.type ?? 'other',
+          city: draft.city || draft.venueCity,
+        },
+      })
     } catch (err) {
       setPublishError((err as Error)?.message ?? 'something went wrong')
     } finally {

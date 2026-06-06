@@ -5,7 +5,6 @@
   },
   "build": {
     "base": {
-      "node": "20.x",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "your-supabase-url",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "your-anon-key"

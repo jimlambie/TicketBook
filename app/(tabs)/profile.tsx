@@ -108,24 +108,22 @@ export default function ProfileScreen() {
 
         {/* Stats */}
         <View style={s.statsRow}>
-          <View style={s.stat}>
-            <Text style={s.statValue}>{stats?.total_events ?? 0}</Text>
-            <Text style={s.statLabel}>stubs</Text>
+          <View style={s.statPrimary}>
+            <Text style={s.statPrimaryValue}>{stats?.total_events ?? 0}</Text>
+            <Text style={s.statPrimaryLabel}>stubs</Text>
           </View>
-          <View style={s.statDivider} />
-          <View style={s.stat}>
-            <Text style={s.statValue}>{friends.length}</Text>
-            <Text style={s.statLabel}>friends</Text>
-          </View>
-          {stats?.rank != null && (
-            <>
-              <View style={s.statDivider} />
-              <View style={s.stat}>
-                <Text style={s.statValue}>#{stats.rank}</Text>
-                <Text style={s.statLabel}>rank</Text>
+          <View style={s.statSecondary}>
+            <View style={s.statSecondaryLine}>
+              <Text style={s.statSecondaryValue}>{friends.length}</Text>
+              <Text style={s.statSecondaryLabel}> friends</Text>
+            </View>
+            {stats?.rank != null && (
+              <View style={s.statSecondaryLine}>
+                <Text style={s.statSecondaryValue}>#{stats.rank}</Text>
+                <Text style={s.statSecondaryLabel}> rank</Text>
               </View>
-            </>
-          )}
+            )}
+          </View>
         </View>
 
         <View style={s.separator} />
@@ -235,15 +233,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   title: {
-    fontFamily: F.mono,
-    fontSize: 10,
-    color: C.muted,
-    letterSpacing: 0.1 * 10,
-    textTransform: 'uppercase',
+    fontFamily: F.display,
+    fontSize: 22,
+    letterSpacing: -0.44,
+    color: C.text,
   },
   // Profile block
   profileBlock: {
@@ -294,33 +291,48 @@ const s = StyleSheet.create({
   // Stats
   statsRow: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingBottom: 20,
-    gap: 0,
+    gap: 20,
   },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
+  statPrimary: {
     gap: 2,
   },
-  statValue: {
+  statPrimaryValue: {
     fontFamily: F.display,
-    fontSize: 22,
+    fontSize: 40,
+    letterSpacing: -0.8,
     color: C.text,
-    letterSpacing: -0.4,
+    lineHeight: 44,
   },
-  statLabel: {
+  statPrimaryLabel: {
     fontFamily: F.mono,
     fontSize: 9,
     color: C.muted,
     letterSpacing: 0.08 * 9,
     textTransform: 'uppercase',
   },
-  statDivider: {
-    width: 0.5,
-    backgroundColor: C.border2,
-    alignSelf: 'stretch',
-    marginVertical: 4,
+  statSecondary: {
+    flex: 1,
+    gap: 5,
+    paddingBottom: 6,
+  },
+  statSecondaryLine: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  statSecondaryValue: {
+    fontFamily: F.display,
+    fontSize: 18,
+    letterSpacing: -0.36,
+    color: C.text,
+  },
+  statSecondaryLabel: {
+    fontFamily: F.mono,
+    fontSize: 11,
+    color: C.muted,
+    paddingLeft: 4,
   },
   separator: {
     height: 0.5,

@@ -71,6 +71,9 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={s.root} edges={['top']}>
+      <View style={s.header}>
+        <Text style={s.wordmark}>TicketBook</Text>
+      </View>
       <View style={s.segmentRow}>
         {(['mine', 'friends'] as FeedTab[]).map(tab => (
           <TouchableOpacity
@@ -158,10 +161,21 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: C.text,
   },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 2,
+  },
+  wordmark: {
+    fontFamily: F.display,
+    fontSize: 16,
+    letterSpacing: -0.32,
+    color: C.text,
+  },
   segmentRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 8,
     gap: 20,
   },
   segmentTab: {
