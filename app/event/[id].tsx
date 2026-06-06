@@ -100,13 +100,6 @@ function Header({ event }: { event: EventFeedRow }) {
       <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} hitSlop={8}>
         <Ionicons name="chevron-back" size={24} color={C.muted} />
       </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => router.push(`/event/${event.id}/edit` as any)}
-        activeOpacity={0.7}
-        hitSlop={8}
-      >
-        <Ionicons name="pencil-outline" size={20} color={C.muted} />
-      </TouchableOpacity>
     </View>
   )
 }
