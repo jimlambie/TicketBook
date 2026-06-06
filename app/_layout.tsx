@@ -1,0 +1,59 @@
+import { useEffect } from 'react'
+import { Stack } from 'expo-router'
+import { StatusBar } from 'expo-status-bar'
+import * as SplashScreen from 'expo-splash-screen'
+import { useFonts } from 'expo-font'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useAuthStore } from '@/stores/authStore'
+import { useSetupNotifications } from '@/hooks/useNotifications'
+
+SplashScreen.preventAutoHideAsync()
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2,
+    },
+  },
+})
+
+function NotificationsSetup() {
+  useSetupNotifications()
+  return null
+}
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'Fraunces-Regular': require('../assets/fonts/Fraunces-Regular.ttf'),
+    'Fraunces-SemiBold': require('../assets/fonts/Fraunces-SemiBold.ttf'),
+    'Fraunces-Italic': require('../assets/fonts/Fraunces-Italic.ttf'),
+    'DMMono-Regular': require('../assets/fonts/DMMono-Regular.ttf'),
+    'DMMono-Medium': require('../assets/fonts/DMMono-Medium.ttf'),
+  })
+
+  const { initialize } = useAuthStore()
+
+  useEffect(() => {
+    initialize()
+  }, [])
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync()
+    }
+  }, [fontsLoaded])
+
+  if (!fontsLoaded) return null
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style="light" />
+        <NotificationsSetup />
+        <Stack screenOptions={{ headerShown: false }} />
+      </QueryClientProvider>
+    </GestureHandlerRootView>
+  )
+}
