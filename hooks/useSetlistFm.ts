@@ -5,6 +5,9 @@ import type { Song } from '@/lib/draft'
 export interface SetlistFmResult {
   id: string
   venueName: string
+  venueCity: string
+  venueCountryCode: string
+  tourName: string | null
   songs: Song[]
 }
 
@@ -56,11 +59,20 @@ export function useSetlistFm(artistMbid: string | null, dateIso: string | null) 
       }
 
       const data = await res.json() as { setlist?: Record<string, unknown>[] }
-      return (data.setlist ?? []).map(s => ({
-        id: s.id as string,
-        venueName: ((s.venue as Record<string, unknown>)?.name as string) ?? '',
-        songs: parseSongs(s),
-      }))
+      return (data.setlist ?? []).map(s => {
+        const venue = s.venue as Record<string, unknown> | undefined
+        const city = venue?.city as Record<string, unknown> | undefined
+        const country = city?.country as Record<string, unknown> | undefined
+        const tour = s.tour as Record<string, unknown> | undefined
+        return {
+          id: s.id as string,
+          venueName: (venue?.name as string) ?? '',
+          venueCity: (city?.name as string) ?? '',
+          venueCountryCode: (country?.code as string) ?? '',
+          tourName: (tour?.name as string) || null,
+          songs: parseSongs(s),
+        }
+      })
     },
     enabled: !!artistMbid && !!dateIso && !!apiKey,
     staleTime: 300_000,

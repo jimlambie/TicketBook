@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
@@ -14,25 +13,33 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { C, F } from '@/constants/design'
 import { useVenueSearch } from '@/hooks/useVenueSearch'
+import { useSetlistFmVenueSearch } from '@/hooks/useSetlistFmVenueSearch'
 import type { Venue } from '@/lib/database.types'
+import type { SetlistFmResult } from '@/hooks/useSetlistFm'
+import type { EventType } from '@/lib/database.types'
 
 interface SelectedVenue {
-  id: string
+  id: string | null
   name: string
   city: string
   countryCode: string
 }
 
 interface StepVenueProps {
+  type: EventType | null
   venueId: string | null
   venueName: string
+  setlistFmResults?: SetlistFmResult[]
   onSelectVenue: (venue: SelectedVenue) => void
   onTypeVenueName: (name: string) => void
   onNext: () => void
   onBack: () => void
 }
 
-export default function StepVenue({ venueId, venueName, onSelectVenue, onTypeVenueName, onNext, onBack }: StepVenueProps) {
+export default function StepVenue({
+  type, venueId, venueName, setlistFmResults,
+  onSelectVenue, onTypeVenueName, onNext, onBack,
+}: StepVenueProps) {
   const [query, setQuery] = useState(venueId ? '' : venueName)
   const [debouncedQuery, setDebouncedQuery] = useState(venueId ? '' : venueName)
 
@@ -41,11 +48,37 @@ export default function StepVenue({ venueId, venueName, onSelectVenue, onTypeVen
     return () => clearTimeout(t)
   }, [query])
 
-  const { data: results = [], isFetching } = useVenueSearch(debouncedQuery)
+  const isConcert = type === 'concert' || type === 'festival'
+
+  const { data: dbResults = [], isFetching: dbFetching } = useVenueSearch(
+    !isConcert ? debouncedQuery : ''
+  )
+  const { data: fmVenueResults = [], isFetching: fmVenueFetching } = useSetlistFmVenueSearch(
+    isConcert ? debouncedQuery : ''
+  )
+
+  const isFetching = isConcert ? fmVenueFetching : dbFetching
 
   const isValid = venueName.trim().length > 0 || venueId !== null
 
-  function handleSelectResult(venue: Venue) {
+  // First result from the setlist prefetch that has a venue name
+  const fmSuggestion = !venueId && (setlistFmResults ?? []).find(r => r.venueName) || null
+
+  function handleSelectFmSuggestion() {
+    if (!fmSuggestion) {
+      return
+    }
+    onSelectVenue({
+      id: null,
+      name: fmSuggestion.venueName,
+      city: fmSuggestion.venueCity,
+      countryCode: fmSuggestion.venueCountryCode,
+    })
+    setQuery('')
+    setDebouncedQuery('')
+  }
+
+  function handleSelectDbResult(venue: Venue) {
     onSelectVenue({
       id: venue.id,
       name: venue.name,
@@ -56,9 +89,16 @@ export default function StepVenue({ venueId, venueName, onSelectVenue, onTypeVen
     setDebouncedQuery('')
   }
 
+  function handleSelectFmVenueResult(name: string, city: string, countryCode: string) {
+    onSelectVenue({ id: null, name, city, countryCode })
+    setQuery('')
+    setDebouncedQuery('')
+  }
+
   function handleUseAsNew() {
     onTypeVenueName(query.trim())
-    setQuery(query.trim())
+    setQuery('')
+    setDebouncedQuery('')
   }
 
   function handleClearSelection() {
@@ -68,7 +108,7 @@ export default function StepVenue({ venueId, venueName, onSelectVenue, onTypeVen
   }
 
   const showResults = debouncedQuery.trim().length >= 2 && !venueId
-  const showUseAsNew = debouncedQuery.trim().length >= 2 && !venueId
+  const showUseAsNew = !isConcert && debouncedQuery.trim().length >= 2 && !venueId
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -82,7 +122,7 @@ export default function StepVenue({ venueId, venueName, onSelectVenue, onTypeVen
           <Text style={s.headingBold}>venue</Text>
         </View>
 
-        {venueId ? (
+        {venueId || venueName.trim().length > 0 && !query.trim() ? (
           <View style={s.selectedChip}>
             <Ionicons name="location" size={14} color={C.accent} />
             <Text style={s.selectedChipText} numberOfLines={1}>{venueName}</Text>
@@ -92,6 +132,21 @@ export default function StepVenue({ venueId, venueName, onSelectVenue, onTypeVen
           </View>
         ) : (
           <>
+            {fmSuggestion && (
+              <TouchableOpacity style={s.suggestion} onPress={handleSelectFmSuggestion} activeOpacity={0.8}>
+                <View style={s.suggestionTop}>
+                  <Text style={s.suggestionSource}>found on setlist.fm</Text>
+                  <Text style={s.suggestionUse}>use this →</Text>
+                </View>
+                <Text style={s.suggestionName}>{fmSuggestion.venueName}</Text>
+                {fmSuggestion.venueCity ? (
+                  <Text style={s.suggestionCity}>
+                    {fmSuggestion.venueCity}{fmSuggestion.venueCountryCode ? `, ${fmSuggestion.venueCountryCode}` : ''}
+                  </Text>
+                ) : null}
+              </TouchableOpacity>
+            )}
+
             <View style={s.searchRow}>
               <Ionicons name="search" size={16} color={C.muted} style={s.searchIcon} />
               <TextInput
@@ -108,22 +163,40 @@ export default function StepVenue({ venueId, venueName, onSelectVenue, onTypeVen
 
             {showResults && (
               <View style={s.resultsList}>
-                {results.map(venue => (
-                  <TouchableOpacity
-                    key={venue.id}
-                    style={s.resultRow}
-                    onPress={() => handleSelectResult(venue)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="location-outline" size={14} color={C.muted} />
-                    <View style={s.resultText}>
-                      <Text style={s.resultName}>{venue.name}</Text>
-                      {venue.city ? (
-                        <Text style={s.resultCity}>{venue.city}{venue.country_code ? `, ${venue.country_code}` : ''}</Text>
-                      ) : null}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                {isConcert
+                  ? fmVenueResults.map(venue => (
+                    <TouchableOpacity
+                      key={venue.id}
+                      style={s.resultRow}
+                      onPress={() => handleSelectFmVenueResult(venue.name, venue.city, venue.countryCode)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="location-outline" size={14} color={C.muted} />
+                      <View style={s.resultText}>
+                        <Text style={s.resultName}>{venue.name}</Text>
+                        {venue.city ? (
+                          <Text style={s.resultCity}>{venue.city}{venue.countryCode ? `, ${venue.countryCode}` : ''}</Text>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                  : dbResults.map(venue => (
+                    <TouchableOpacity
+                      key={venue.id}
+                      style={s.resultRow}
+                      onPress={() => handleSelectDbResult(venue)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="location-outline" size={14} color={C.muted} />
+                      <View style={s.resultText}>
+                        <Text style={s.resultName}>{venue.name}</Text>
+                        {venue.city ? (
+                          <Text style={s.resultCity}>{venue.city}{venue.country_code ? `, ${venue.country_code}` : ''}</Text>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                }
 
                 {showUseAsNew && (
                   <TouchableOpacity style={s.useAsNewRow} onPress={handleUseAsNew} activeOpacity={0.7}>
@@ -179,6 +252,44 @@ const s = StyleSheet.create({
     letterSpacing: -0.56,
     color: C.text,
     lineHeight: 32,
+  },
+  suggestion: {
+    backgroundColor: 'rgba(232,197,71,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(232,197,71,0.25)',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  suggestionTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  suggestionSource: {
+    fontFamily: F.mono,
+    fontSize: 10,
+    color: C.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  suggestionUse: {
+    fontFamily: F.monoMedium,
+    fontSize: 11,
+    color: C.accent,
+  },
+  suggestionName: {
+    fontFamily: F.mono,
+    fontSize: 14,
+    color: C.text,
+  },
+  suggestionCity: {
+    fontFamily: F.mono,
+    fontSize: 12,
+    color: C.muted,
+    marginTop: 2,
   },
   searchRow: {
     flexDirection: 'row',

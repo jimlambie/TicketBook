@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { useLogEvent, useUploadMedia } from '@/hooks/useEvents'
 import { useTagFriend } from '@/hooks/useAttendees'
 import { useCreateSetlist } from '@/hooks/useCreateSetlist'
+import { useSetlistFm } from '@/hooks/useSetlistFm'
 import { useAuthStore } from '@/stores/authStore'
 import {
   saveDraft, loadDraft, clearDraft, hasDraft,
@@ -45,7 +46,7 @@ function buildTitle(draft: DraftState): string {
       : draft.primary.trim()
   }
   if (draft.type === 'concert') {
-    return draft.secondary.trim() || draft.primary.trim()
+    return draft.tourName.trim() || draft.primary.trim()
   }
   return draft.primary.trim()
 }
@@ -61,6 +62,12 @@ export default function NewEventScreen() {
   const uploadMedia = useUploadMedia()
   const createSetlist = useCreateSetlist()
   const tagFriend = useTagFriend()
+
+  const isConcertOrFestival = draft.type === 'concert' || draft.type === 'festival'
+  const { data: fmResults = [], isFetching: fmFetching, isError: fmError } = useSetlistFm(
+    isConcertOrFestival ? draft.artistMbid : null,
+    isConcertOrFestival ? draft.date : null,
+  )
 
   useEffect(() => {
     hasDraft().then(setSavedDraftExists)
@@ -260,26 +267,6 @@ export default function NewEventScreen() {
       )}
 
       {draft.step === 3 && (
-        <StepVenue
-          venueId={draft.venueId}
-          venueName={draft.venueName}
-          onSelectVenue={({ id, name, city, countryCode }) => {
-            updateDraft({
-              venueId: id,
-              venueName: name,
-              venueCity: city,
-              venueCountryCode: countryCode,
-              city: draft.city || city,
-              countryCode: draft.countryCode || countryCode,
-            })
-          }}
-          onTypeVenueName={(name) => updateDraft({ venueId: null, venueName: name })}
-          onNext={goNext}
-          onBack={goBack}
-        />
-      )}
-
-      {draft.step === 4 && (
         <StepWhen
           date={draft.date}
           onChangeDate={(iso) => updateDraft({ date: iso })}
@@ -289,6 +276,28 @@ export default function NewEventScreen() {
           onChangeCountry={(text) => updateDraft({ country: text })}
           countryCode={draft.countryCode}
           onSelectCountry={(name, code) => updateDraft({ country: name, countryCode: code })}
+          onNext={goNext}
+          onBack={goBack}
+        />
+      )}
+
+      {draft.step === 4 && (
+        <StepVenue
+          type={draft.type}
+          venueId={draft.venueId}
+          venueName={draft.venueName}
+          setlistFmResults={fmResults}
+          onSelectVenue={({ id, name, city, countryCode }) => {
+            updateDraft({
+              venueId: id,
+              venueName: name,
+              venueCity: city,
+              venueCountryCode: countryCode,
+              city: city || draft.city,
+              countryCode: countryCode || draft.countryCode,
+            })
+          }}
+          onTypeVenueName={(name) => updateDraft({ venueId: null, venueName: name })}
           onNext={goNext}
           onBack={goBack}
         />
@@ -332,11 +341,18 @@ export default function NewEventScreen() {
       {draft.step === 6 && (draft.type === 'concert' || draft.type === 'festival') && (
         <StepSetlist
           artistMbid={draft.artistMbid}
-          date={draft.date}
+          fmResults={fmResults}
+          fmFetching={fmFetching}
+          fmError={fmError}
           setlistSource={draft.setlistSource}
           onChangeSource={(source) => updateDraft({ setlistSource: source })}
           setlistFmId={draft.setlistFmId}
-          onSelectSetlistFm={(id, songs) => updateDraft({ setlistFmId: id, songs, setlistSource: 'setlist_fm' })}
+          onSelectSetlistFm={(id, songs, tourName) => updateDraft({
+            setlistFmId: id,
+            songs,
+            setlistSource: 'setlist_fm',
+            tourName: tourName ?? draft.tourName,
+          })}
           songs={draft.songs}
           onChangeSongs={(songs) => updateDraft({ songs })}
           onNext={goNext}
@@ -350,6 +366,8 @@ export default function NewEventScreen() {
           onChangeRating={(r) => updateDraft({ rating: r })}
           reviewText={draft.reviewText}
           onChangeReviewText={(t) => updateDraft({ reviewText: t })}
+          tourName={isConcertOrFestival ? draft.tourName : undefined}
+          onChangeTourName={(t) => updateDraft({ tourName: t })}
           onNext={goNext}
           onBack={goBack}
         />

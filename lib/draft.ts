@@ -21,6 +21,7 @@ export type DraftState = {
   primary: string
   artistMbid: string | null
   secondary: string
+  tourName: string
   venueId: string | null
   venueName: string
   venueCity: string
@@ -54,6 +55,7 @@ export const DRAFT_DEFAULTS: DraftState = {
   primary: '',
   artistMbid: null,
   secondary: '',
+  tourName: '',
   venueId: null,
   venueName: '',
   venueCity: '',

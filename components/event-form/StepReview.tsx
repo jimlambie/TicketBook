@@ -17,11 +17,16 @@ interface StepReviewProps {
   onChangeRating: (r: number) => void
   reviewText: string
   onChangeReviewText: (t: string) => void
+  tourName?: string
+  onChangeTourName: (t: string) => void
   onNext: () => void
   onBack: () => void
 }
 
-export default function StepReview({ rating, onChangeRating, reviewText, onChangeReviewText, onNext, onBack }: StepReviewProps) {
+export default function StepReview({
+  rating, onChangeRating, reviewText, onChangeReviewText,
+  tourName, onChangeTourName, onNext, onBack,
+}: StepReviewProps) {
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
   return (
@@ -54,6 +59,23 @@ export default function StepReview({ rating, onChangeRating, reviewText, onChang
             ))}
           </View>
         </View>
+
+        {tourName !== undefined && (
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>
+              tour / show name <Text style={s.optional}>(optional)</Text>
+            </Text>
+            <TextInput
+              style={[s.reviewInput, s.singleLineInput, focusedField === 'tour' && s.inputFocused]}
+              value={tourName}
+              onChangeText={onChangeTourName}
+              onFocus={() => setFocusedField('tour')}
+              onBlur={() => setFocusedField(null)}
+              placeholder="e.g. Dark Matter World Tour"
+              placeholderTextColor={C.muted}
+            />
+          </View>
+        )}
 
         <View style={s.section}>
           <Text style={s.sectionLabel}>
@@ -135,6 +157,11 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: C.text,
     lineHeight: 20,
+  },
+  singleLineInput: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
   },
   inputFocused: {
     borderColor: C.accent,

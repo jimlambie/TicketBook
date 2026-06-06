@@ -26,8 +26,6 @@ const STEP_CONFIG: Record<EventType, {
     heading: "who'd you see?",
     primaryLabel: 'artist',
     primaryPlaceholder: 'e.g. Pearl Jam',
-    secondaryLabel: 'show / tour name',
-    secondaryPlaceholder: 'e.g. Dark Matter World Tour',
   },
   sport: {
     heading: 'who played?',

@@ -11,17 +11,19 @@ import {
   StyleSheet,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useSetlistFm } from '@/hooks/useSetlistFm'
 import { C, F } from '@/constants/design'
+import type { SetlistFmResult } from '@/hooks/useSetlistFm'
 import type { Song } from '@/lib/draft'
 
 interface StepSetlistProps {
   artistMbid: string | null
-  date: string
+  fmResults: SetlistFmResult[]
+  fmFetching: boolean
+  fmError: boolean
   setlistSource: 'setlist_fm' | 'manual'
   onChangeSource: (source: 'setlist_fm' | 'manual') => void
   setlistFmId: string | null
-  onSelectSetlistFm: (id: string, songs: Song[]) => void
+  onSelectSetlistFm: (id: string, songs: Song[], tourName: string | null) => void
   songs: Song[]
   onChangeSongs: (songs: Song[]) => void
   onNext: () => void
@@ -29,17 +31,13 @@ interface StepSetlistProps {
 }
 
 export default function StepSetlist({
-  artistMbid, date, setlistSource, onChangeSource,
+  artistMbid, fmResults, fmFetching, fmError,
+  setlistSource, onChangeSource,
   setlistFmId, onSelectSetlistFm, songs, onChangeSongs,
   onNext, onBack,
 }: StepSetlistProps) {
   const apiKeyAvailable = !!process.env.EXPO_PUBLIC_SETLISTFM_API_KEY
   const effectiveSource = (!apiKeyAvailable || !artistMbid) ? 'manual' : setlistSource
-
-  const { data: fmResults = [], isFetching, isError } = useSetlistFm(
-    effectiveSource === 'setlist_fm' ? artistMbid : null,
-    effectiveSource === 'setlist_fm' ? date : null,
-  )
 
   function addSong() {
     const position = songs.length + 1
@@ -101,16 +99,16 @@ export default function StepSetlist({
 
         {effectiveSource === 'setlist_fm' && (
           <View style={s.fmSection}>
-            {isFetching && (
+            {fmFetching && (
               <View style={s.fmLoading}>
                 <ActivityIndicator color={C.accent} />
                 <Text style={s.fmLoadingText}>searching setlist.fm…</Text>
               </View>
             )}
-            {!isFetching && isError && (
+            {!fmFetching && fmError && (
               <Text style={s.fmError}>couldn't reach setlist.fm — switch to manual</Text>
             )}
-            {!isFetching && !isError && fmResults.length === 0 && (
+            {!fmFetching && !fmError && fmResults.length === 0 && (
               <View style={s.fmEmpty}>
                 <Text style={s.fmEmptyText}>no setlists found for this date</Text>
                 <TouchableOpacity onPress={() => onChangeSource('manual')} activeOpacity={0.8}>
@@ -118,11 +116,11 @@ export default function StepSetlist({
                 </TouchableOpacity>
               </View>
             )}
-            {!isFetching && fmResults.map(result => (
+            {!fmFetching && fmResults.map(result => (
               <TouchableOpacity
                 key={result.id}
                 style={[s.fmResult, setlistFmId === result.id && s.fmResultSelected]}
-                onPress={() => onSelectSetlistFm(result.id, result.songs)}
+                onPress={() => onSelectSetlistFm(result.id, result.songs, result.tourName)}
                 activeOpacity={0.8}
               >
                 <View style={s.fmResultHeader}>
@@ -133,6 +131,9 @@ export default function StepSetlist({
                   />
                   <Text style={s.fmResultVenue} numberOfLines={1}>{result.venueName || 'Unknown venue'}</Text>
                 </View>
+                {result.tourName && (
+                  <Text style={s.fmResultTour} numberOfLines={1}>{result.tourName}</Text>
+                )}
                 <Text style={s.fmResultCount}>{result.songs.length} songs</Text>
               </TouchableOpacity>
             ))}
@@ -295,6 +296,13 @@ const s = StyleSheet.create({
     fontFamily: F.mono,
     fontSize: 13,
     color: C.text,
+  },
+  fmResultTour: {
+    fontFamily: F.mono,
+    fontSize: 11,
+    color: C.muted,
+    paddingLeft: 24,
+    marginBottom: 2,
   },
   fmResultCount: {
     fontFamily: F.mono,
