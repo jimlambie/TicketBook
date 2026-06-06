@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Stack } from 'expo-router'
+import { useEffect, useRef } from 'react'
+import { Stack, router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as SplashScreen from 'expo-splash-screen'
 import { useFonts } from 'expo-font'
@@ -33,11 +33,28 @@ export default function RootLayout() {
     'DMMono-Medium': require('../assets/fonts/DMMono-Medium.ttf'),
   })
 
-  const { initialize } = useAuthStore()
+  const { initialize, session, isLoading } = useAuthStore()
+  const didInit = useRef(false)
 
   useEffect(() => {
     initialize()
   }, [])
+
+  // Navigate on session changes after the initial load.
+  // index.tsx handles routing on first render; this effect handles
+  // subsequent changes: OAuth callback, email sign-in, sign-out.
+  useEffect(() => {
+    if (isLoading) return
+    if (!didInit.current) {
+      didInit.current = true
+      return
+    }
+    if (session) {
+      router.replace('/(tabs)/feed')
+    } else {
+      router.replace('/auth/onboarding')
+    }
+  }, [session?.user?.id, isLoading])
 
   useEffect(() => {
     if (fontsLoaded) {
