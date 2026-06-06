@@ -1,42 +1,88 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
+  TextInput,
   ActivityIndicator,
   StyleSheet,
   RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { FlashList } from '@shopify/flash-list'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useMyFeed, useFriendsFeed } from '@/hooks/useEvents'
+import { useMyFeed, useFriendsFeed, useSearchMyEvents } from '@/hooks/useEvents'
 import EventCard from '@/components/EventCard'
 import SportCard from '@/components/SportCard'
 import type { EventFeedRow } from '@/lib/database.types'
-import { C, F } from '@/constants/design'
+import { C, F, eventTypeStyle } from '@/constants/design'
 
 type FeedTab = 'mine' | 'friends'
+type TypeFilter = 'all' | 'concert' | 'sport' | 'festival' | 'other'
+
+const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
+  { key: 'all', label: 'all' },
+  { key: 'concert', label: 'concerts' },
+  { key: 'sport', label: 'sport' },
+  { key: 'festival', label: 'festivals' },
+  { key: 'other', label: 'other' },
+]
 
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<FeedTab>('mine')
+  const [searchActive, setSearchActive] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const inputRef = useRef<TextInput>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const myFeed = useMyFeed()
   const friendsFeed = useFriendsFeed()
+  const searchResults = useSearchMyEvents(searchQuery, typeFilter)
+
+  const isSearchMode = searchActive && activeTab === 'mine'
+  const showSearchResults = isSearchMode && (searchQuery.trim().length > 0 || typeFilter !== 'all')
 
   const active = activeTab === 'mine' ? myFeed : friendsFeed
-  const events: EventFeedRow[] = active.data?.pages.flatMap(page => page) ?? []
-  const isRefreshing = active.isRefetching && !active.isFetchingNextPage
+  const feedEvents: EventFeedRow[] = active.data?.pages.flatMap(page => page) ?? []
+  const displayEvents: EventFeedRow[] = showSearchResults
+    ? (searchResults.data ?? [])
+    : feedEvents
+
+  const isRefreshing = !showSearchResults && active.isRefetching && !active.isFetchingNextPage
+
+  // Debounce search input → query
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setSearchQuery(searchInput)
+    }, 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [searchInput])
+
+  function openSearch() {
+    setSearchActive(true)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  function closeSearch() {
+    setSearchActive(false)
+    setSearchInput('')
+    setSearchQuery('')
+    setTypeFilter('all')
+  }
 
   const handleRefresh = useCallback(() => {
     active.refetch()
   }, [active])
 
   const handleLoadMore = useCallback(() => {
-    if (active.hasNextPage && !active.isFetchingNextPage) {
+    if (!showSearchResults && active.hasNextPage && !active.isFetchingNextPage) {
       active.fetchNextPage()
     }
-  }, [active])
+  }, [active, showSearchResults])
 
   const renderItem = useCallback(({ item }: { item: EventFeedRow }) => {
     const onPress = () => router.push(`/event/${item.id}`)
@@ -50,7 +96,7 @@ export default function FeedScreen() {
     )
   }, [])
 
-  if (active.isLoading) {
+  if (!searchActive && active.isLoading) {
     return (
       <View style={s.centered}>
         <ActivityIndicator color={C.accent} />
@@ -58,7 +104,7 @@ export default function FeedScreen() {
     )
   }
 
-  if (active.isError) {
+  if (!searchActive && active.isError) {
     return (
       <View style={s.centered}>
         <Text style={s.errorText}>couldn't load feed</Text>
@@ -71,9 +117,34 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={s.root} edges={['top']}>
-      <View style={s.header}>
-        <Text style={s.wordmark}>TicketBook</Text>
-      </View>
+      {/* Header */}
+      {searchActive ? (
+        <View style={s.searchHeader}>
+          <TextInput
+            ref={inputRef}
+            style={s.searchInput}
+            value={searchInput}
+            onChangeText={setSearchInput}
+            placeholder="artist, venue, city…"
+            placeholderTextColor={C.muted}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          <TouchableOpacity onPress={closeSearch} activeOpacity={0.7} hitSlop={8}>
+            <Text style={s.cancelText}>cancel</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={s.header}>
+          <Text style={s.wordmark}>TicketBook</Text>
+          <TouchableOpacity onPress={openSearch} activeOpacity={0.7} hitSlop={8}>
+            <Ionicons name="search-outline" size={20} color={C.muted} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Segment tabs */}
       <View style={s.segmentRow}>
         {(['mine', 'friends'] as FeedTab[]).map(tab => (
           <TouchableOpacity
@@ -91,24 +162,71 @@ export default function FeedScreen() {
       </View>
       <View style={s.segmentDivider} />
 
+      {/* Type filter — mine tab + search active */}
+      {isSearchMode && (
+        <View style={s.filterRow}>
+          {TYPE_FILTERS.map(f => {
+            const isActive = typeFilter === f.key
+            const ts = f.key !== 'all' ? eventTypeStyle[f.key as keyof typeof eventTypeStyle] : null
+            return (
+              <TouchableOpacity
+                key={f.key}
+                style={[
+                  s.filterChip,
+                  isActive && ts && { backgroundColor: ts.bg, borderColor: ts.border },
+                  isActive && !ts && s.filterChipActive,
+                ]}
+                onPress={() => setTypeFilter(f.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  s.filterChipText,
+                  isActive && ts && { color: ts.text },
+                  isActive && !ts && s.filterChipTextActive,
+                ]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      )}
+
+      {/* Loading state for search */}
+      {showSearchResults && searchResults.isLoading && (
+        <View style={s.searchLoading}>
+          <ActivityIndicator color={C.accent} size="small" />
+        </View>
+      )}
+
       <FlashList
-        data={events}
+        data={displayEvents}
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={s.listContent}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={C.accent}
-            colors={[C.accent]}
-          />
+          !showSearchResults ? (
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={C.accent}
+              colors={[C.accent]}
+            />
+          ) : undefined
         }
-        ListEmptyComponent={<EmptyState tab={activeTab} />}
+        ListEmptyComponent={
+          !showSearchResults || !searchResults.isLoading
+            ? <EmptyState
+                tab={activeTab}
+                isSearch={showSearchResults}
+                query={searchQuery}
+              />
+            : null
+        }
         ListFooterComponent={
-          active.isFetchingNextPage
+          !showSearchResults && active.isFetchingNextPage
             ? <ActivityIndicator color={C.accent} style={s.footerLoader} />
             : null
         }
@@ -117,7 +235,25 @@ export default function FeedScreen() {
   )
 }
 
-function EmptyState({ tab }: { tab: FeedTab }) {
+function EmptyState({
+  tab,
+  isSearch,
+  query,
+}: {
+  tab: FeedTab
+  isSearch: boolean
+  query: string
+}) {
+  if (isSearch) {
+    return (
+      <View style={s.empty}>
+        <Text style={s.emptyTitle}>no results</Text>
+        <Text style={s.emptySubtitle}>
+          nothing matched{query.trim() ? ` "${query.trim()}"` : ' those filters'}
+        </Text>
+      </View>
+    )
+  }
   return (
     <View style={s.empty}>
       <Text style={s.emptyTitle}>
@@ -161,7 +297,11 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: C.text,
   },
+  // Header
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 2,
@@ -172,6 +312,32 @@ const s = StyleSheet.create({
     letterSpacing: -0.32,
     color: C.text,
   },
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 2,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: 36,
+    backgroundColor: C.surface,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: C.border2,
+    paddingHorizontal: 12,
+    fontFamily: F.mono,
+    fontSize: 13,
+    color: C.text,
+  },
+  cancelText: {
+    fontFamily: F.mono,
+    fontSize: 13,
+    color: C.accent,
+  },
+  // Segments
   segmentRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -203,8 +369,41 @@ const s = StyleSheet.create({
   segmentDivider: {
     height: 0.5,
     backgroundColor: C.border,
-    marginBottom: 12,
+    marginBottom: 8,
   },
+  // Type filter
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    gap: 6,
+  },
+  filterChip: {
+    borderWidth: 0.5,
+    borderColor: C.border2,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  filterChipActive: {
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  filterChipText: {
+    fontFamily: F.mono,
+    fontSize: 10,
+    color: C.muted,
+    letterSpacing: 0.2,
+  },
+  filterChipTextActive: {
+    color: C.text,
+  },
+  // Search loading
+  searchLoading: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  // List
   listContent: {
     padding: 12,
   },

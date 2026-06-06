@@ -5,7 +5,7 @@ import {
   useInfiniteQuery
 } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Event, EventFeedRow } from '@/lib/database.types'
+import { Event, EventFeedRow, EventType } from '@/lib/database.types'
 import { useAuthStore } from '@/stores/authStore'
 
 const EVENTS_PER_PAGE = 20
@@ -27,7 +27,9 @@ export const eventKeys = {
   feed: (userId: string) => [...eventKeys.all, 'feed', userId] as const,
   detail: (id: string) => [...eventKeys.all, 'detail', id] as const,
   friendsFeed: (userId: string) =>
-    [...eventKeys.all, 'friends-feed', userId] as const
+    [...eventKeys.all, 'friends-feed', userId] as const,
+  search: (userId: string, query: string, type: string) =>
+    [...eventKeys.all, 'search', userId, query, type] as const,
 }
 
 // ============================================================
@@ -59,6 +61,44 @@ export function useMyFeed() {
     },
     initialPageParam: 0,
     enabled: !!supabaseUser
+  })
+}
+
+// ============================================================
+// SEARCH YOUR EVENTS
+// ============================================================
+
+export function useSearchMyEvents(query: string, type: string) {
+  const { supabaseUser } = useAuthStore()
+  const active = query.trim().length > 0 || (type !== 'all' && type !== '')
+
+  return useQuery({
+    queryKey: eventKeys.search(supabaseUser?.id ?? '', query, type),
+    queryFn: async () => {
+      let q = supabase
+        .from('events_feed')
+        .select('*, sport_details(home_team,away_team,home_score,away_score,competition,season,lineups)')
+        .eq('user_id', supabaseUser!.id)
+        .is('deleted_at', null)
+        .order('event_date', { ascending: false })
+        .limit(100)
+
+      if (query.trim()) {
+        q = q.or(
+          `artist_name.ilike.%${query.trim()}%,venue_name.ilike.%${query.trim()}%,city.ilike.%${query.trim()}%`
+        )
+      }
+
+      if (type && type !== 'all') {
+        q = q.eq('type', type as EventType)
+      }
+
+      const { data, error } = await q
+      if (error) throw error
+      return data as EventFeedRow[]
+    },
+    enabled: !!supabaseUser && active,
+    staleTime: 1000 * 30,
   })
 }
 
