@@ -1,5 +1,5 @@
 import { Sentry } from '@/lib/sentry'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Stack, router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as SplashScreen from 'expo-splash-screen'
@@ -26,13 +26,15 @@ function NotificationsSetup() {
 }
 
 function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'Fraunces-Regular': require('../assets/fonts/Fraunces-Regular.ttf'),
     'Fraunces-SemiBold': require('../assets/fonts/Fraunces-SemiBold.ttf'),
     'Fraunces-Italic': require('../assets/fonts/Fraunces-Italic.ttf'),
     'DMMono-Regular': require('../assets/fonts/DMMono-Regular.ttf'),
     'DMMono-Medium': require('../assets/fonts/DMMono-Medium.ttf'),
   })
+  const [fontTimedOut, setFontTimedOut] = useState(false)
+  const ready = fontsLoaded || !!fontError || fontTimedOut
 
   const { initialize, session, isLoading } = useAuthStore()
   const didInit = useRef(false)
@@ -40,6 +42,28 @@ function RootLayout() {
   useEffect(() => {
     initialize()
   }, [])
+
+  // Diagnoses the splash-screen hang reported on physical devices: useFonts
+  // never settles there, and a swallowed error/pending promise throws
+  // nothing, so neither a JS exception nor an ANR ever reaches Sentry. This
+  // forces a report (with the underlying error, if any) and unblocks the UI
+  // instead of hanging on the splash screen forever.
+  useEffect(() => {
+    if (fontsLoaded || fontError) return
+
+    const timer = setTimeout(() => {
+      Sentry.captureMessage('Splash hang: useFonts unresolved after 8s', 'warning')
+      setFontTimedOut(true)
+    }, 8000)
+
+    return () => clearTimeout(timer)
+  }, [fontsLoaded, fontError])
+
+  useEffect(() => {
+    if (fontError) {
+      Sentry.captureException(fontError)
+    }
+  }, [fontError])
 
   // Handles sign-out only. Sign-in navigation is handled by the individual
   // auth screens (login.tsx explicit redirect, welcome.tsx session watcher).
@@ -56,12 +80,12 @@ function RootLayout() {
   }, [session?.user?.id, isLoading])
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (ready) {
       SplashScreen.hideAsync()
     }
-  }, [fontsLoaded])
+  }, [ready])
 
-  if (!fontsLoaded) return null
+  if (!ready) return null
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
