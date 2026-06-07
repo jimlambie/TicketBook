@@ -33,7 +33,8 @@
       "extends": "development",
       "developmentClient": false,
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "ios": {
         "simulator": false
