@@ -1,4 +1,5 @@
 import { ExpoConfig, ConfigContext } from 'expo/config'
+import { withSentry } from '@sentry/react-native/expo'
 
 const IS_DEV = process.env.EXPO_PUBLIC_ENV === 'development'
 const IS_STAGING = process.env.EXPO_PUBLIC_ENV === 'staging'
@@ -15,7 +16,7 @@ const getAppName = () => {
   return 'TicketBook'
 }
 
-export default ({ config }: ConfigContext): ExpoConfig => ({
+const config: ExpoConfig = ({ config }: ConfigContext) => ({
   ...config,
   name: getAppName(),
   slug: 'ticketbook',
@@ -103,4 +104,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   runtimeVersion: {
     policy: 'appVersion'
   }
+})
+
+export default withSentry(config, {
+  url: 'https://sentry.io/',
+  // Use SENTRY_AUTH_TOKEN env to authenticate with Sentry.
+  project: 'react-native',
+  organization: 'bricks-and-giggles'
 })

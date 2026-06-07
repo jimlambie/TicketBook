@@ -5,9 +5,10 @@ import * as Sentry from '@sentry/react-native'
 // import time) gets evaluated.
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  enabled: !__DEV__,
+  // enabled: !__DEV__,
+  enabled: true,
   environment: process.env.EXPO_PUBLIC_ENV ?? 'production',
-  tracesSampleRate: 0.2,
+  tracesSampleRate: 0.2
 })
 
 export { Sentry }
