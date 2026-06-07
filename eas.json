@@ -7,7 +7,8 @@
     "base": {
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "your-supabase-url",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "your-anon-key"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "your-anon-key",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://1981bbac0dbfd17f070f2ed122e28184@o4511522840838144.ingest.de.sentry.io/4511522842214480"
       }
     },
     "development": {

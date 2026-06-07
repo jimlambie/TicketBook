@@ -82,7 +82,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       }
     ],
     'expo-font',
-    'expo-localization'
+    'expo-localization',
+    '@sentry/react-native/expo'
   ],
   experiments: {
     typedRoutes: true

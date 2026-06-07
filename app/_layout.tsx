@@ -1,3 +1,4 @@
+import { Sentry } from '@/lib/sentry'
 import { useEffect, useRef } from 'react'
 import { Stack, router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -24,7 +25,7 @@ function NotificationsSetup() {
   return null
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     'Fraunces-Regular': require('../assets/fonts/Fraunces-Regular.ttf'),
     'Fraunces-SemiBold': require('../assets/fonts/Fraunces-SemiBold.ttf'),
@@ -72,3 +73,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   )
 }
+
+export default Sentry.wrap(RootLayout)
