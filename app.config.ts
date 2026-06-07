@@ -1,5 +1,4 @@
 import { ExpoConfig, ConfigContext } from 'expo/config'
-import { withSentry } from '@sentry/react-native/expo'
 
 const IS_DEV = process.env.EXPO_PUBLIC_ENV === 'development'
 const IS_STAGING = process.env.EXPO_PUBLIC_ENV === 'staging'
@@ -16,7 +15,7 @@ const getAppName = () => {
   return 'TicketBook'
 }
 
-const config: ExpoConfig = ({ config }: ConfigContext) => ({
+const config = ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: getAppName(),
   slug: 'ticketbook',
@@ -84,7 +83,15 @@ const config: ExpoConfig = ({ config }: ConfigContext) => ({
     ],
     'expo-font',
     'expo-localization',
-    '@sentry/react-native/expo'
+    [
+      '@sentry/react-native/expo',
+      {
+        url: 'https://sentry.io/',
+        // Use SENTRY_AUTH_TOKEN env to authenticate with Sentry.
+        project: 'react-native',
+        organization: 'bricks-and-giggles'
+      }
+    ]
   ],
   experiments: {
     typedRoutes: true
@@ -106,9 +113,4 @@ const config: ExpoConfig = ({ config }: ConfigContext) => ({
   }
 })
 
-export default withSentry(config, {
-  url: 'https://sentry.io/',
-  // Use SENTRY_AUTH_TOKEN env to authenticate with Sentry.
-  project: 'react-native',
-  organization: 'bricks-and-giggles'
-})
+export default config
