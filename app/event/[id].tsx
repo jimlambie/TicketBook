@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Image, Modal, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
+import { Alert, Dimensions, Image, Modal, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -14,6 +14,8 @@ import { COUNTRIES } from '@/constants/countries'
 import { C, F, eventTypeStyle } from '@/constants/design'
 import type { EventFeedRow, Json, Visibility } from '@/lib/database.types'
 import type { Song } from '@/lib/draft'
+
+const SCREEN = Dimensions.get('window')
 
 const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   concert: 'musical-notes-outline',
@@ -348,29 +350,40 @@ function MediaSection({
   photos: import('@/hooks/useEventMedia').EventMediaWithUrl[]
   video: import('@/hooks/useEventMedia').EventMediaWithUrl | undefined
 }) {
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null)
+
   return (
     <View style={s.mediaSection}>
       <Text style={s.sectionLabel}>media</Text>
 
       {ticket && (
-        <View style={s.ticketImageWrap}>
+        <TouchableOpacity
+          style={s.ticketImageWrap}
+          onPress={() => setLightboxUri(ticket.publicUrl)}
+          activeOpacity={0.9}
+        >
           <Image
             source={{ uri: ticket.publicUrl }}
             style={s.ticketImage}
             resizeMode="cover"
           />
-        </View>
+        </TouchableOpacity>
       )}
 
       {photos.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.photoRow}>
           {photos.map(photo => (
-            <Image
+            <TouchableOpacity
               key={photo.id}
-              source={{ uri: photo.publicUrl }}
-              style={s.photoThumb}
-              resizeMode="cover"
-            />
+              onPress={() => setLightboxUri(photo.publicUrl)}
+              activeOpacity={0.9}
+            >
+              <Image
+                source={{ uri: photo.publicUrl }}
+                style={s.photoThumb}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}
@@ -381,6 +394,8 @@ function MediaSection({
           <Text style={s.videoPlaceholderText}>video attached</Text>
         </View>
       )}
+
+      <LightboxModal uri={lightboxUri} onClose={() => setLightboxUri(null)} />
     </View>
   )
 }
@@ -591,6 +606,71 @@ function AttendeesSection({
     </View>
   )
 }
+
+// ─── Lightbox ─────────────────────────────────────────────
+
+function LightboxModal({ uri, onClose }: { uri: string | null; onClose: () => void }) {
+  return (
+    <Modal
+      visible={!!uri}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={ls.overlay}>
+        <ScrollView
+          style={ls.scroll}
+          contentContainerStyle={ls.scrollContent}
+          maximumZoomScale={4}
+          minimumZoomScale={1}
+          centerContent
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          bouncesZoom
+        >
+          <Image
+            source={{ uri: uri ?? '' }}
+            style={{ width: SCREEN.width, height: SCREEN.height }}
+            resizeMode="contain"
+          />
+        </ScrollView>
+        <SafeAreaView style={ls.closeArea} edges={['top']} pointerEvents="box-none">
+          <TouchableOpacity style={ls.closeBtn} onPress={onClose} hitSlop={12} activeOpacity={0.7}>
+            <Ionicons name="close" size={22} color="#fff" />
+          </TouchableOpacity>
+        </SafeAreaView>
+      </View>
+    </Modal>
+  )
+}
+
+const ls = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.96)',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    width: SCREEN.width,
+    height: SCREEN.height,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeArea: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  closeBtn: {
+    margin: 16,
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+})
 
 // ─── Styles ───────────────────────────────────────────────
 
