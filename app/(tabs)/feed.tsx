@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useFocusEffect } from 'expo-router'
 import {
   View,
   Text,
@@ -38,6 +39,10 @@ export default function FeedScreen() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const inputRef = useRef<TextInput>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useFocusEffect(useCallback(() => {
+    setActiveTab('mine')
+  }, []))
 
   const myFeed = useMyFeed()
   const friendsFeed = useFriendsFeed()
