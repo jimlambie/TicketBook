@@ -119,11 +119,12 @@ create policy "events: own insert"
   to authenticated
   with check (auth.uid() = user_id);
 
--- Update: own events only
+-- Update: own events only (covers field edits and soft-delete via deleted_at)
 create policy "events: own update"
   on public.events for update
   to authenticated
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- Delete: own events only (soft delete via updated_at trigger)
 create policy "events: own delete"

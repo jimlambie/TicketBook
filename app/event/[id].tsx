@@ -76,17 +76,21 @@ export default function EventDetailScreen() {
     )
   }
 
+  const isOwner = supabaseUser?.id === event.user_id
+
   return (
     <SafeAreaView style={s.root} edges={['top']}>
-      <Header event={event} />
+      <Header event={event} isOwner={isOwner} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <Hero event={event} />
         <View style={s.separator} />
         <Body event={event} userId={supabaseUser?.id ?? ''} />
-        <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
-          <Ionicons name="trash-outline" size={13} color={C.red} />
-          <Text style={s.deleteBtnText}>delete stub</Text>
-        </TouchableOpacity>
+        {isOwner && (
+          <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
+            <Ionicons name="trash-outline" size={13} color={C.red} />
+            <Text style={s.deleteBtnText}>delete stub</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
@@ -94,12 +98,21 @@ export default function EventDetailScreen() {
 
 // ─── Header ───────────────────────────────────────────────
 
-function Header({ event }: { event: EventFeedRow }) {
+function Header({ event, isOwner }: { event: EventFeedRow; isOwner: boolean }) {
   return (
     <View style={s.header}>
       <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} hitSlop={8}>
         <Ionicons name="chevron-back" size={24} color={C.muted} />
       </TouchableOpacity>
+      {isOwner && (
+        <TouchableOpacity
+          onPress={() => router.push(`/event/edit/${event.id}`)}
+          activeOpacity={0.7}
+          hitSlop={8}
+        >
+          <Ionicons name="pencil-outline" size={20} color={C.muted} />
+        </TouchableOpacity>
+      )}
     </View>
   )
 }

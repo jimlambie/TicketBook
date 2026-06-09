@@ -4,6 +4,7 @@ import {
   useQueryClient,
   useInfiniteQuery
 } from '@tanstack/react-query'
+import { File as ExpoFile } from 'expo-file-system'
 import { supabase } from '@/lib/supabase'
 import { Event, EventFeedRow, EventType } from '@/lib/database.types'
 import { useAuthStore } from '@/stores/authStore'
@@ -29,7 +30,7 @@ export const eventKeys = {
   friendsFeed: (userId: string) =>
     [...eventKeys.all, 'friends-feed', userId] as const,
   search: (userId: string, query: string, type: string) =>
-    [...eventKeys.all, 'search', userId, query, type] as const,
+    [...eventKeys.all, 'search', userId, query, type] as const
 }
 
 // ============================================================
@@ -77,7 +78,9 @@ export function useSearchMyEvents(query: string, type: string) {
     queryFn: async () => {
       let q = supabase
         .from('events_feed')
-        .select('*, sport_details(home_team,away_team,home_score,away_score,competition,season,lineups)')
+        .select(
+          '*, sport_details(home_team,away_team,home_score,away_score,competition,season,lineups)'
+        )
         .eq('user_id', supabaseUser!.id)
         .is('deleted_at', null)
         .order('event_date', { ascending: false })
@@ -98,7 +101,7 @@ export function useSearchMyEvents(query: string, type: string) {
       return data as EventFeedRow[]
     },
     enabled: !!supabaseUser && active,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 30
   })
 }
 
@@ -202,8 +205,6 @@ export function useCreateEvent() {
         .select()
         .single()
 
-      console.log('data, error :>> ', data, error)
-
       if (error) throw error
       return data
     },
@@ -254,17 +255,11 @@ export function useDeleteEvent() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('events')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id)
-
+      const { error } = await supabase.rpc('delete_event', { p_event_id: id })
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: eventKeys.feed(supabaseUser!.id)
-      })
+      queryClient.invalidateQueries({ queryKey: eventKeys.all })
     }
   })
 }
@@ -291,24 +286,17 @@ export function useUploadMedia() {
       type,
       mimeType
     }: UploadMediaPayload) => {
-      // Read the file
-      const response = await fetch(uri)
-      const blob = await response.blob()
-
       const ext = mimeType?.split('/')[1] ?? 'jpg'
       const storagePath = `${supabaseUser!.id}/${eventId}/${type}_${Date.now()}.${ext}`
 
-      console.log('storagePath :>> ', storagePath)
+      const bytes = await new ExpoFile(uri).bytes()
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('event-media')
-        .upload(storagePath, blob, {
+        .upload(storagePath, bytes, {
           contentType: mimeType ?? 'image/jpeg',
           upsert: false
         })
-
-      console.log('uploadError :>> ', uploadError)
 
       if (uploadError) throw uploadError
 
@@ -321,14 +309,12 @@ export function useUploadMedia() {
           type,
           storage_path: storagePath,
           mime_type: mimeType,
-          file_size_bytes: blob.size,
+          file_size_bytes: bytes.byteLength,
           moderation_status: 'pending',
           sort_order: 0
         })
         .select()
         .single()
-
-      console.log('data, dbError :>> ', data, dbError)
 
       if (dbError) throw dbError
       return data
