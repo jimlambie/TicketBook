@@ -138,6 +138,7 @@ export default function ExploreScreen() {
                   id: req.requester.id,
                   username: req.requester.username,
                   display_name: req.requester.display_name,
+                  avatar_url: req.requester.avatar_url,
                   friendshipId: req.id,
                   friendshipRelation: 'pending_received',
                 }

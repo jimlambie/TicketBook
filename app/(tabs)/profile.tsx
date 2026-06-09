@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   Modal,
@@ -10,6 +11,8 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import { File as ExpoFile } from 'expo-file-system'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -41,6 +44,7 @@ export default function ProfileScreen() {
   const [displayName, setDisplayName] = useState('')
   const [bio, setBio] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const { data: friends = [] } = useFriends()
   const { data: stats } = useMyLeaderboardEntry(profile?.id ?? '')
@@ -73,6 +77,52 @@ export default function ProfileScreen() {
     }
   }
 
+  async function handleAvatarPress() {
+    if (!profile) {
+      return
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Allow photo access to set a profile picture.')
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+
+    if (result.canceled) {
+      return
+    }
+
+    const asset = result.assets[0]
+    setUploadingAvatar(true)
+    try {
+      const ext = asset.mimeType?.split('/')[1] ?? 'jpg'
+      const path = `${profile.id}/avatar_${Date.now()}.${ext}`
+      const bytes = await new ExpoFile(asset.uri).bytes()
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: false })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      await updateProfile({ avatar_url: publicUrl })
+    } catch {
+      Alert.alert('Error', 'Could not upload avatar. Please try again.')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   function handleSignOut() {
     Alert.alert('Sign out', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
@@ -92,9 +142,29 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Avatar + info */}
         <View style={s.profileBlock}>
-          <View style={s.avatar}>
-            <Text style={s.avatarText}>{initials}</Text>
-          </View>
+          <TouchableOpacity
+            onPress={handleAvatarPress}
+            activeOpacity={0.8}
+            disabled={uploadingAvatar}
+          >
+            <View style={s.avatar}>
+              {profile.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={s.avatarImage} resizeMode="cover" />
+              ) : (
+                <Text style={s.avatarText}>{initials}</Text>
+              )}
+              {uploadingAvatar && (
+                <View style={s.avatarOverlay}>
+                  <ActivityIndicator size="small" color={C.text} />
+                </View>
+              )}
+            </View>
+            {!uploadingAvatar && (
+              <View style={s.cameraBadge}>
+                <Ionicons name="camera" size={10} color={C.bg} />
+              </View>
+            )}
+          </TouchableOpacity>
           <View style={s.profileInfo}>
             {!!profile.display_name && (
               <Text style={s.displayName}>{profile.display_name}</Text>
@@ -110,12 +180,12 @@ export default function ProfileScreen() {
         <View style={s.statsRow}>
           <View style={s.statPrimary}>
             <Text style={s.statPrimaryValue}>{stats?.total_events ?? 0}</Text>
-            <Text style={s.statPrimaryLabel}>stubs</Text>
+            <Text style={s.statPrimaryLabel}>stub{(stats?.total_events ?? 0) === 1 ? '' : 's'}</Text>
           </View>
           <View style={s.statSecondary}>
             <View style={s.statSecondaryLine}>
               <Text style={s.statSecondaryValue}>{friends.length}</Text>
-              <Text style={s.statSecondaryLabel}> friends</Text>
+              <Text style={s.statSecondaryLabel}> friend{friends.length === 1 ? '' : 's'}</Text>
             </View>
             {stats?.rank != null && (
               <View style={s.statSecondaryLine}>
@@ -258,6 +328,34 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: C.accent,
+    borderWidth: 2,
+    borderColor: C.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarText: {
     fontFamily: F.mono,

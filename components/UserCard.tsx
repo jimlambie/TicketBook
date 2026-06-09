@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import { C, F } from '@/constants/design'
 import type { FriendshipRelation } from '@/hooks/useFriends'
 
@@ -6,6 +6,7 @@ export interface UserCardUser {
   id: string
   username: string
   display_name: string | null
+  avatar_url?: string | null
   friendshipId?: string
   friendshipRelation: FriendshipRelation
 }
@@ -43,7 +44,11 @@ export default function UserCard({
   return (
     <View style={s.row}>
       <View style={[s.avatar, { backgroundColor: color }]}>
-        <Text style={s.avatarText}>{initials}</Text>
+        {user.avatar_url ? (
+          <Image source={{ uri: user.avatar_url }} style={s.avatarImage} resizeMode="cover" />
+        ) : (
+          <Text style={s.avatarText}>{initials}</Text>
+        )}
       </View>
 
       <View style={s.info}>
@@ -133,6 +138,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
   },
   avatarText: {
     fontFamily: F.mono,
