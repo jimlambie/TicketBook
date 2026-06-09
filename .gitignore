@@ -14,3 +14,6 @@ node_modules/
 .claude
 
 .env.local
+.DS_Store
+ios
+android
