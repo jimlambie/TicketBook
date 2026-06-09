@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { FlashList } from '@shopify/flash-list'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMyFeed, useFriendsFeed, useSearchMyEvents } from '@/hooks/useEvents'
+import { useFriends } from '@/hooks/useFriends'
 import EventCard from '@/components/EventCard'
 import SportCard from '@/components/SportCard'
 import type { EventFeedRow } from '@/lib/database.types'
@@ -41,6 +42,15 @@ export default function FeedScreen() {
   const myFeed = useMyFeed()
   const friendsFeed = useFriendsFeed()
   const searchResults = useSearchMyEvents(searchQuery, typeFilter)
+  const { data: friends = [] } = useFriends()
+
+  const friendProfileMap = useMemo(() => {
+    const m = new Map<string, { username: string; display_name: string | null }>()
+    for (const f of friends) {
+      m.set(f.id, { username: f.username, display_name: f.display_name })
+    }
+    return m
+  }, [friends])
 
   const isSearchMode = searchActive && activeTab === 'mine'
   const showSearchResults = isSearchMode && (searchQuery.trim().length > 0 || typeFilter !== 'all')
@@ -86,15 +96,16 @@ export default function FeedScreen() {
 
   const renderItem = useCallback(({ item }: { item: EventFeedRow }) => {
     const onPress = () => router.push(`/event/${item.id}`)
+    const owner = activeTab === 'friends' ? friendProfileMap.get(item.user_id) : undefined
     return (
       <View style={s.item}>
         {item.type === 'sport'
-          ? <SportCard event={item} onPress={onPress} />
-          : <EventCard event={item} onPress={onPress} />
+          ? <SportCard event={item} onPress={onPress} owner={owner} />
+          : <EventCard event={item} onPress={onPress} owner={owner} />
         }
       </View>
     )
-  }, [])
+  }, [activeTab, friendProfileMap])
 
   if (!searchActive && active.isLoading) {
     return (

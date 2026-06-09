@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -19,17 +19,53 @@ import {
   useRespondToRequest,
   useRemoveFriend,
 } from '@/hooks/useFriends'
+import type { UserWithStatus } from '@/hooks/useFriends'
 import UserCard from '@/components/UserCard'
 import type { UserCardUser } from '@/components/UserCard'
 
 export default function ExploreScreen() {
   const [query, setQuery] = useState('')
+  const [pendingUsers, setPendingUsers] = useState<Map<string, UserWithStatus>>(new Map())
 
   const { results, isLoading: searching } = useSearchUsers(query)
   const { data: requests = [] } = useFriendRequests()
   const sendRequest = useSendFriendRequest()
   const respondToRequest = useRespondToRequest()
   const removeFriend = useRemoveFriend()
+
+  // Sync pre-existing pending_sent users from search results into local map
+  useEffect(() => {
+    const toAdd = results.filter(
+      u => u.friendshipRelation === 'pending_sent' && !pendingUsers.has(u.id)
+    )
+    if (toAdd.length > 0) {
+      setPendingUsers(prev => {
+        const next = new Map(prev)
+        for (const u of toAdd) {
+          next.set(u.id, u)
+        }
+        return next
+      })
+    }
+  }, [results]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleAdd(user: UserWithStatus) {
+    setPendingUsers(prev => {
+      const next = new Map(prev)
+      next.set(user.id, { ...user, friendshipRelation: 'pending_sent' })
+      return next
+    })
+    sendRequest.mutate(user.id)
+  }
+
+  // Apply pending overrides to live search results so the button flips immediately
+  const displayResults = results.map(u =>
+    pendingUsers.has(u.id) ? { ...u, friendshipRelation: 'pending_sent' as const } : u
+  )
+
+  // When query is cleared, fall back to showing any users we know are pending
+  const isSearching = query.trim().length >= 2
+  const usersToShow = isSearching ? displayResults : [...pendingUsers.values()]
 
   return (
     <SafeAreaView style={s.root} edges={['top']}>
@@ -61,14 +97,14 @@ export default function ExploreScreen() {
         </View>
 
         {/* Search results */}
-        {results.length > 0 && (
+        {usersToShow.length > 0 && (
           <View style={s.section}>
-            {results.map((user, i) => (
+            {usersToShow.map((user, i) => (
               <View key={user.id}>
                 {i > 0 && <View style={s.divider} />}
                 <UserCard
                   user={user}
-                  onAdd={() => sendRequest.mutate(user.id)}
+                  onAdd={() => handleAdd(user)}
                   onAccept={() =>
                     user.friendshipId &&
                     respondToRequest.mutate({ id: user.friendshipId, accept: true })

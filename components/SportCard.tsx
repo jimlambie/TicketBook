@@ -6,6 +6,7 @@ import { C, F } from '@/constants/design'
 interface SportCardProps {
   event: EventFeedRow
   onPress?: () => void
+  owner?: { username: string; display_name: string | null }
 }
 
 function formatEventDate(dateStr: string): string {
@@ -39,7 +40,7 @@ function abbr(name: string | undefined): string {
   return name.slice(0, 4).toUpperCase()
 }
 
-export default function SportCard({ event, onPress }: SportCardProps) {
+export default function SportCard({ event, onPress, owner }: SportCardProps) {
   const sd = event.sport_details
   const homeTeam = sd?.home_team ?? undefined
   const awayTeam = sd?.away_team ?? undefined
@@ -55,7 +56,10 @@ export default function SportCard({ event, onPress }: SportCardProps) {
     <Pressable style={s.card} onPress={onPress}>
       <View style={s.header}>
         <Text style={s.competition}>{competition ?? 'Sport'}</Text>
-        <Text style={s.headerDate}>{dateStr}</Text>
+        <View style={s.headerRight}>
+          {owner && <Text style={s.ownerBadge}>@{owner.username}</Text>}
+          <Text style={s.headerDate}>{dateStr}</Text>
+        </View>
       </View>
 
       <View style={s.body}>
@@ -123,6 +127,16 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: C.muted,
     letterSpacing: 0.1 * 9,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  ownerBadge: {
+    fontFamily: F.mono,
+    fontSize: 10,
+    color: C.muted,
+    letterSpacing: 0.04 * 10,
   },
   headerDate: {
     fontFamily: F.mono,

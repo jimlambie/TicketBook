@@ -7,6 +7,7 @@ import { C, F, eventTypeStyle } from '@/constants/design'
 interface EventCardProps {
   event: EventFeedRow
   onPress?: () => void
+  owner?: { username: string; display_name: string | null }
 }
 
 const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -23,7 +24,7 @@ function formatEventDate(dateStr: string): string {
   }
 }
 
-export default function EventCard({ event, onPress }: EventCardProps) {
+export default function EventCard({ event, onPress, owner }: EventCardProps) {
   const typeKey = (event.type in eventTypeStyle ? event.type : 'other') as keyof typeof eventTypeStyle
   const typeStyle = eventTypeStyle[typeKey]
 
@@ -62,6 +63,9 @@ export default function EventCard({ event, onPress }: EventCardProps) {
               {typeStyle.label.toUpperCase()}
             </Text>
           </View>
+          {owner && (
+            <Text style={s.ownerBadge}>@{owner.username}</Text>
+          )}
         </View>
 
         <Text style={s.artistName} numberOfLines={2}>
@@ -171,7 +175,15 @@ const s = StyleSheet.create({
   },
   pillRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 10,
+  },
+  ownerBadge: {
+    fontFamily: F.mono,
+    fontSize: 10,
+    color: C.muted,
+    letterSpacing: 0.04 * 10,
   },
   pill: {
     flexDirection: 'row',
