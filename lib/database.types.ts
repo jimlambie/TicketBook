@@ -15,6 +15,58 @@ export type AttendeeStatus = 'pending' | 'confirmed' | 'declined'
 export type SetlistSource = 'user_upload' | 'setlist_fm' | 'manual'
 export type PlanType = 'free' | 'premium'
 
+export interface ArchiveInsights {
+  total_shows: number
+  years_active: number[]
+  longest_gap: {
+    days: number
+    from_date: string
+    to_date: string
+  } | null
+  artist_streak: {
+    artist_name: string
+    start_year: number
+    end_year: number
+    length: number
+  } | null
+  busiest_month: {
+    month: string
+    month_num: number
+    count: number
+  } | null
+  highest_rated_show: {
+    title: string
+    artist_name: string | null
+    venue_name: string | null
+    rating: number
+    event_date: string
+  } | null
+  cities_count: number
+  countries_count: number
+}
+
+export interface YearInReview {
+  year: number | null
+  years_active: number[]
+  total_shows?: number
+  prev_year_total?: number
+  top_artist?: {
+    name: string
+    count: number
+  } | null
+  top_venue?: {
+    name: string
+    count: number
+  } | null
+  highest_rated_show?: {
+    title: string
+    artist_name: string | null
+    venue_name: string | null
+    rating: number
+    event_date: string
+  } | null
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -346,6 +398,14 @@ export interface Database {
       evaluate_achievements: {
         Args: { p_user_id: string }
         Returns: void
+      }
+      get_archive_insights: {
+        Args: Record<string, never>
+        Returns: ArchiveInsights
+      }
+      get_year_in_review: {
+        Args: { p_year?: number | null }
+        Returns: YearInReview
       }
     }
     Enums: {

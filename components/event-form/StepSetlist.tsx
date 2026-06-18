@@ -11,6 +11,7 @@ import {
   StyleSheet,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { C, F } from '@/constants/design'
 import type { SetlistFmResult } from '@/hooks/useSetlistFm'
 import type { Song } from '@/lib/draft'
@@ -26,6 +27,7 @@ interface StepSetlistProps {
   onSelectSetlistFm: (id: string, songs: Song[], tourName: string | null) => void
   songs: Song[]
   onChangeSongs: (songs: Song[]) => void
+  isPremium: boolean
   onNext: () => void
   onBack: () => void
 }
@@ -34,10 +36,11 @@ export default function StepSetlist({
   artistMbid, fmResults, fmFetching, fmError,
   setlistSource, onChangeSource,
   setlistFmId, onSelectSetlistFm, songs, onChangeSongs,
-  onNext, onBack,
+  isPremium, onNext, onBack,
 }: StepSetlistProps) {
   const apiKeyAvailable = !!process.env.EXPO_PUBLIC_SETLISTFM_API_KEY
-  const effectiveSource = (!apiKeyAvailable || !artistMbid) ? 'manual' : setlistSource
+  const effectiveSource = (!apiKeyAvailable || !artistMbid || !isPremium) ? 'manual' : setlistSource
+  const [showSetlistInfo, setShowSetlistInfo] = useState(false)
 
   function addSong() {
     const position = songs.length + 1
@@ -75,26 +78,43 @@ export default function StepSetlist({
         </View>
 
         {showSourceToggle && (
-          <View style={s.toggle}>
-            <TouchableOpacity
-              style={[s.toggleOption, effectiveSource === 'setlist_fm' && s.toggleOptionActive]}
-              onPress={() => onChangeSource('setlist_fm')}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.toggleText, effectiveSource === 'setlist_fm' && s.toggleTextActive]}>
-                setlist.fm
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.toggleOption, effectiveSource === 'manual' && s.toggleOptionActive]}
-              onPress={() => onChangeSource('manual')}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.toggleText, effectiveSource === 'manual' && s.toggleTextActive]}>
-                manual
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            <View style={s.toggle}>
+              <TouchableOpacity
+                style={[
+                  s.toggleOption,
+                  effectiveSource === 'setlist_fm' && s.toggleOptionActive,
+                  !isPremium && s.toggleOptionLocked,
+                ]}
+                onPress={() => isPremium ? onChangeSource('setlist_fm') : setShowSetlistInfo(v => !v)}
+                activeOpacity={0.8}
+              >
+                {!isPremium && (
+                  <Ionicons name="lock-closed-outline" size={12} color={C.muted} />
+                )}
+                <Text style={[s.toggleText, effectiveSource === 'setlist_fm' && s.toggleTextActive]}>
+                  setlist.fm
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.toggleOption, effectiveSource === 'manual' && s.toggleOptionActive]}
+                onPress={() => onChangeSource('manual')}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.toggleText, effectiveSource === 'manual' && s.toggleTextActive]}>
+                  manual
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {!isPremium && showSetlistInfo && (
+              <View>
+                <Text style={s.lockedInfo}>collector unlocks automatic setlists from setlist.fm</Text>
+                <TouchableOpacity onPress={() => router.push('/collector' as any)} activeOpacity={0.8}>
+                  <Text style={s.lockedLink}>become a collector →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         )}
 
         {effectiveSource === 'setlist_fm' && (
@@ -223,12 +243,17 @@ const s = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: C.border2,
     backgroundColor: C.surface,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   toggleOptionActive: {
     borderColor: C.accent,
     backgroundColor: 'rgba(232,197,71,0.08)',
+  },
+  toggleOptionLocked: {
+    borderStyle: 'dashed',
   },
   toggleText: {
     fontFamily: F.mono,
@@ -237,6 +262,19 @@ const s = StyleSheet.create({
   },
   toggleTextActive: {
     color: C.accent,
+  },
+  lockedInfo: {
+    fontFamily: F.mono,
+    fontSize: 12,
+    color: C.muted,
+    lineHeight: 18,
+  },
+  lockedLink: {
+    fontFamily: F.monoMedium,
+    fontSize: 12,
+    color: C.accent,
+    marginTop: 6,
+    marginBottom: 16,
   },
   fmSection: {
     marginBottom: 24,

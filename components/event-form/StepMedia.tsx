@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
+import { router } from 'expo-router'
 import { C, F } from '@/constants/design'
 import type { Photo } from '@/lib/draft'
 
@@ -12,6 +14,7 @@ interface StepMediaProps {
   onSetPhotos: (photos: Photo[]) => void
   videoUri: string | null
   onSetVideo: (uri: string | null) => void
+  isPremium: boolean
   onNext: () => void
   onBack: () => void
 }
@@ -19,9 +22,11 @@ interface StepMediaProps {
 export default function StepMedia({
   ticketImageUri, ticketMimeType, onSetTicketImage,
   photos, onSetPhotos, videoUri, onSetVideo,
-  onNext, onBack,
+  isPremium, onNext, onBack,
 }: StepMediaProps) {
   const hasMedia = ticketImageUri !== null || photos.length > 0 || videoUri !== null
+  const photoLimit = isPremium ? 10 : 3
+  const [showPhotoInfo, setShowPhotoInfo] = useState(false)
 
   async function pickTicket() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -40,14 +45,14 @@ export default function StepMedia({
   }
 
   async function pickPhotos() {
-    if (photos.length >= 10) {
+    if (photos.length >= photoLimit) {
       return
     }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
       return
     }
-    const remaining = 10 - photos.length
+    const remaining = photoLimit - photos.length
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
@@ -117,7 +122,7 @@ export default function StepMedia({
       {/* Photos */}
       <View style={s.section}>
         <Text style={s.sectionLabel}>
-          photos{photos.length > 0 ? ` (${photos.length}/10)` : ''}
+          photos{photos.length > 0 ? ` (${photos.length}/${photoLimit})` : ''}
         </Text>
         {photos.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.photoScroll}>
@@ -135,11 +140,26 @@ export default function StepMedia({
             ))}
           </ScrollView>
         )}
-        {photos.length < 10 && (
+        {photos.length < photoLimit ? (
           <TouchableOpacity style={s.addBtn} onPress={pickPhotos} activeOpacity={0.8}>
             <Ionicons name="images-outline" size={20} color={C.muted} />
             <Text style={s.addBtnText}>{photos.length === 0 ? 'add photos' : 'add more'}</Text>
           </TouchableOpacity>
+        ) : !isPremium && (
+          <>
+            <TouchableOpacity style={s.lockedBtn} onPress={() => setShowPhotoInfo(v => !v)} activeOpacity={0.8}>
+              <Ionicons name="lock-closed-outline" size={16} color={C.muted} />
+              <Text style={s.lockedBtnText}>collector</Text>
+            </TouchableOpacity>
+            {showPhotoInfo && (
+              <View>
+                <Text style={s.lockedInfo}>collector unlocks up to 10 photos per stub</Text>
+                <TouchableOpacity onPress={() => router.push('/collector' as any)} activeOpacity={0.8}>
+                  <Text style={s.lockedLink}>become a collector →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         )}
       </View>
 
@@ -225,6 +245,38 @@ const s = StyleSheet.create({
     fontFamily: F.mono,
     fontSize: 13,
     color: C.muted,
+  },
+  lockedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: C.surface2,
+    borderWidth: 0.5,
+    borderColor: C.border2,
+    borderRadius: 8,
+    borderStyle: 'dashed',
+    height: 48,
+    paddingHorizontal: 16,
+  },
+  lockedBtnText: {
+    fontFamily: F.mono,
+    fontSize: 13,
+    color: C.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.08 * 13,
+  },
+  lockedInfo: {
+    fontFamily: F.mono,
+    fontSize: 12,
+    color: C.muted,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  lockedLink: {
+    fontFamily: F.monoMedium,
+    fontSize: 12,
+    color: C.accent,
+    marginTop: 6,
   },
   ticketPreview: {
     position: 'relative',

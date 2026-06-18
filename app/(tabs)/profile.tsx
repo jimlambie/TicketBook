@@ -55,6 +55,7 @@ export default function ProfileScreen() {
   }
 
   const initials = profile.username.slice(0, 2).toUpperCase()
+  const isPremium = profile.plan === 'premium'
 
   function openEdit() {
     setDisplayName(profile?.display_name ?? '')
@@ -197,6 +198,22 @@ export default function ProfileScreen() {
         </View>
 
         <View style={s.separator} />
+
+        {/* Collector */}
+        <TouchableOpacity
+          style={s.collectorRow}
+          onPress={() => router.push('/collector' as any)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={isPremium ? 'star' : 'star-outline'} size={18} color={isPremium ? C.accent : C.muted} />
+          <View style={s.collectorText}>
+            <Text style={s.collectorTitle}>Collector</Text>
+            <Text style={s.collectorSub}>
+              {isPremium ? 'Active — thanks for your support' : 'Up to 10 photos, automatic setlists'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={14} color={C.muted} />
+        </TouchableOpacity>
 
         {/* Friends list */}
         {friends.length > 0 && (
@@ -436,6 +453,32 @@ const s = StyleSheet.create({
     height: 0.5,
     backgroundColor: C.border2,
     marginBottom: 16,
+  },
+  // Collector
+  collectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: C.border2,
+    marginBottom: 16,
+  },
+  collectorText: {
+    flex: 1,
+    gap: 2,
+  },
+  collectorTitle: {
+    fontFamily: F.monoMedium,
+    fontSize: 13,
+    color: C.text,
+  },
+  collectorSub: {
+    fontFamily: F.mono,
+    fontSize: 11,
+    color: C.muted,
   },
   // Friends
   sectionBlock: {

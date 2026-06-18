@@ -57,7 +57,8 @@ export default function NewEventScreen() {
   const [isPublishing, setIsPublishing] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
 
-  const { supabaseUser } = useAuthStore()
+  const { supabaseUser, profile } = useAuthStore()
+  const isPremium = profile?.plan === 'premium'
   const logEvent = useLogEvent()
   const uploadMedia = useUploadMedia()
   const createSetlist = useCreateSetlist()
@@ -312,6 +313,7 @@ export default function NewEventScreen() {
           onSetPhotos={(photos) => updateDraft({ photos })}
           videoUri={draft.videoUri}
           onSetVideo={(uri) => updateDraft({ videoUri: uri })}
+          isPremium={isPremium}
           onNext={goNext}
           onBack={goBack}
         />
@@ -355,6 +357,7 @@ export default function NewEventScreen() {
           })}
           songs={draft.songs}
           onChangeSongs={(songs) => updateDraft({ songs })}
+          isPremium={isPremium}
           onNext={goNext}
           onBack={goBack}
         />
