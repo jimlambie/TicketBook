@@ -299,7 +299,7 @@ function Body({ event, userId }: { event: EventFeedRow; userId: string }) {
         {event.attendee_count > 0 && (
           <DetailRow
             icon="people-outline"
-            text={`${event.attendee_count} others attended`}
+            text={`${event.attendee_count} other${event.attendee_count > 1 ? 's' : ''} attended`}
             muted
           />
         )}
