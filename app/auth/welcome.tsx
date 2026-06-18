@@ -46,7 +46,7 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={s.root}>
       <View style={s.upper}>
-        <Text style={s.wordmark}>TicketBook</Text>
+        <Text style={s.wordmark}>TicketBook.io</Text>
         <Text style={s.tagline}>your event archive</Text>
         <Text style={s.counter}>#0001</Text>
       </View>

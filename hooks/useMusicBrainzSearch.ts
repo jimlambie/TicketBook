@@ -30,7 +30,7 @@ export function useMusicBrainzSearch(query: string) {
           `https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(trimmed)}&fmt=json&limit=7`,
           {
             signal: controller.signal,
-            headers: { 'User-Agent': 'TicketBook/1.0 (ticketbook.app)' },
+            headers: { 'User-Agent': 'TicketBook.io/1.0 (ticketbook.app)' },
           }
         )
         const data = await res.json()

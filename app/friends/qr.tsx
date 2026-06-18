@@ -14,7 +14,7 @@ export default function QRCodeScreen() {
 
   function handleShare() {
     Share.share({
-      message: `Add me on TicketBook! Scan my QR code or search for @${username}`,
+      message: `Add me on TicketBook.io! Scan my QR code or search for @${username}`,
     })
   }
 

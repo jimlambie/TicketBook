@@ -34,7 +34,7 @@ export default function RecapScreen() {
     if (!data || currentYear === null) {
       return
     }
-    const lines = [`My ${currentYear} in review on TicketBook`, `${data.total_shows ?? 0} shows logged`]
+    const lines = [`My ${currentYear} in review on TicketBook.io`, `${data.total_shows ?? 0} shows logged`]
     if (data.top_artist) {
       lines.push(`Top artist: ${data.top_artist.name} (${data.top_artist.count}x)`)
     }

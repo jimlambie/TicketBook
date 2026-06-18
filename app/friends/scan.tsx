@@ -41,7 +41,7 @@ export default function ScanScreen() {
     setResolving(false)
 
     if (error || !user) {
-      Alert.alert('Not found', 'This QR code does not match a TicketBook user.', [
+      Alert.alert('Not found', 'This QR code does not match a TicketBook.io user.', [
         { text: 'Try again', onPress: () => { hasScanned.current = false } },
         { text: 'Cancel', onPress: () => router.back() },
       ])
@@ -80,7 +80,7 @@ export default function ScanScreen() {
         <View style={s.permContent}>
           <Ionicons name="camera-outline" size={40} color={C.muted} />
           <Text style={s.permTitle}>Camera access needed</Text>
-          <Text style={s.permSub}>To scan QR codes, TicketBook needs camera permission.</Text>
+          <Text style={s.permSub}>To scan QR codes, TicketBook.io needs camera permission.</Text>
           <TouchableOpacity style={s.permBtn} onPress={requestPermission} activeOpacity={0.8}>
             <Text style={s.permBtnText}>Grant permission</Text>
           </TouchableOpacity>

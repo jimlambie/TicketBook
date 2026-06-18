@@ -153,7 +153,7 @@ export default function FeedScreen() {
         </View>
       ) : (
         <View style={s.header}>
-          <Text style={s.wordmark}>TicketBook</Text>
+          <Text style={s.wordmark}>TicketBook.io</Text>
           <TouchableOpacity onPress={openSearch} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="search-outline" size={20} color={C.muted} />
           </TouchableOpacity>

@@ -1,4 +1,4 @@
-# TicketBook
+# TicketBook.io
 
 Your personal digital ticket stub archive.
 

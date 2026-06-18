@@ -65,7 +65,7 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={s.lower}>
-        <Text style={s.wordmark}>TicketBook</Text>
+        <Text style={s.wordmark}>TicketBook.io</Text>
         <Text style={s.tagline}>your permanent archive{'\n'}of every live event you attend</Text>
 
         <View style={s.actions}>

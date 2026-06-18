@@ -10,9 +10,9 @@ const getUniqueIdentifier = () => {
 }
 
 const getAppName = () => {
-  if (IS_DEV) return 'TicketBook (Dev)'
-  if (IS_STAGING) return 'TicketBook (Staging)'
-  return 'TicketBook'
+  if (IS_DEV) return 'TicketBook.io (Dev)'
+  if (IS_STAGING) return 'TicketBook.io (Staging)'
+  return 'TicketBook.io'
 }
 
 const config = ({ config }: ConfigContext): ExpoConfig => ({
@@ -39,7 +39,7 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
         'Used to scan and upload ticket photos and event images.',
       NSPhotoLibraryUsageDescription:
         'Used to upload photos and tickets from your library.',
-      NSContactsUsageDescription: 'Used to find friends already on TicketBook.'
+      NSContactsUsageDescription: 'Used to find friends already on TicketBook.io.'
     }
   },
   android: {
