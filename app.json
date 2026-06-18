@@ -1,0 +1,16 @@
+{
+  "name": "TicketBook",
+  "slug": "ticketbook",
+  "version": "1.0.0",
+  "orientation": "portrait",
+  "plugins": [
+    [
+      "@sentry/react-native/expo",
+      {
+        "url": "https://sentry.io/",
+        "project": "react-native",
+        "organization": "bricks-and-giggles"
+      }
+    ]
+  ]
+}

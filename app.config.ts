@@ -4,9 +4,9 @@ const IS_DEV = process.env.EXPO_PUBLIC_ENV === 'development'
 const IS_STAGING = process.env.EXPO_PUBLIC_ENV === 'staging'
 
 const getUniqueIdentifier = () => {
-  if (IS_DEV) return 'com.bricksandgiggles.ticketbook.dev'
-  if (IS_STAGING) return 'com.bricksandgiggles.ticketbook.staging'
-  return 'com.bricksandgiggles.ticketbook'
+  if (IS_DEV) return 'com.twentysevenworks.bricksandgiggles.ticketbook.dev'
+  if (IS_STAGING) return 'com.twentysevenworks.bricksandgiggles.ticketbook.staging'
+  return 'com.twentysevenworks.bricksandgiggles.ticketbook'
 }
 
 const getAppName = () => {

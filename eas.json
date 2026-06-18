@@ -66,9 +66,10 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "your-apple-id@email.com",
+        "appleId": "jameslambie@gmail.com",
+        "appleTeamId": "4J5K4KB2CA",
         "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
+        "sku": "com.twentysevenworks.bricksandgiggles.ticketbook"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
