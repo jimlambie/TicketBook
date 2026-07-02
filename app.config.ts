@@ -48,13 +48,16 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#0f0e0c'
     },
+    softwareKeyboardLayoutMode: 'pan',
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
     permissions: [
       'CAMERA',
       'READ_MEDIA_IMAGES',
       'READ_MEDIA_VIDEO',
       'READ_CONTACTS',
       'RECEIVE_BOOT_COMPLETED',
-      'VIBRATE'
+      'VIBRATE',
+      'android.permission.DETECT_SCREEN_CAPTURE'
     ]
   },
   plugins: [
