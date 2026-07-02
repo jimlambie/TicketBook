@@ -391,6 +391,10 @@ export interface Database {
         Args: { user_a: string; user_b: string }
         Returns: boolean
       }
+      delete_event: {
+        Args: { p_event_id: string }
+        Returns: void
+      }
       refresh_user_stats: {
         Args: { p_user_id: string }
         Returns: void
