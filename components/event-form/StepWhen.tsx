@@ -30,7 +30,7 @@ interface StepWhenProps {
 
 export default function StepWhen({
   date, onChangeDate, city, onChangeCity,
-  country, onChangeCountry, countryCode, onSelectCountry,
+  country, onChangeCountry, countryCode: _countryCode, onSelectCountry,
   onNext, onBack,
 }: StepWhenProps) {
   const [focusedField, setFocusedField] = useState<string | null>(null)

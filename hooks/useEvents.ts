@@ -53,11 +53,15 @@ export function useMyFeed() {
         .order('event_date', { ascending: false })
         .range(pageParam, pageParam + EVENTS_PER_PAGE - 1)
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
       return data as EventFeedRow[]
     },
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < EVENTS_PER_PAGE) return undefined
+      if (lastPage.length < EVENTS_PER_PAGE) {
+        return undefined
+      }
       return allPages.flat().length
     },
     initialPageParam: 0,
@@ -97,7 +101,9 @@ export function useSearchMyEvents(query: string, type: string) {
       }
 
       const { data, error } = await q
-      if (error) throw error
+      if (error) {
+        throw error
+      }
       return data as EventFeedRow[]
     },
     enabled: !!supabaseUser && active,
@@ -122,7 +128,9 @@ export function useFriendsFeed() {
         .eq('user_id', supabaseUser!.id)
 
       const friendIds = friends?.map(f => f.friend_id) ?? []
-      if (friendIds.length === 0) return []
+      if (friendIds.length === 0) {
+        return []
+      }
 
       const { data, error } = await supabase
         .from('events_feed')
@@ -135,11 +143,15 @@ export function useFriendsFeed() {
         .order('event_date', { ascending: false })
         .range(pageParam, pageParam + EVENTS_PER_PAGE - 1)
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
       return data as EventFeedRow[]
     },
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < EVENTS_PER_PAGE) return undefined
+      if (lastPage.length < EVENTS_PER_PAGE) {
+        return undefined
+      }
       return allPages.flat().length
     },
     initialPageParam: 0,
@@ -163,7 +175,9 @@ export function useEvent(id: string) {
         .eq('id', id)
         .single()
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
       return data as EventFeedRow
     },
     enabled: !!id
@@ -205,7 +219,9 @@ export function useCreateEvent() {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
       return data
     },
     onSuccess: () => {
@@ -233,7 +249,9 @@ export function useUpdateEvent(id: string) {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
       return data
     },
     onSuccess: () => {
@@ -251,12 +269,13 @@ export function useUpdateEvent(id: string) {
 
 export function useDeleteEvent() {
   const queryClient = useQueryClient()
-  const { supabaseUser } = useAuthStore()
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.rpc('delete_event', { p_event_id: id })
-      if (error) throw error
+      if (error) {
+        throw error
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: eventKeys.all })
@@ -298,7 +317,9 @@ export function useUploadMedia() {
           upsert: false
         })
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        throw uploadError
+      }
 
       // Create media record (moderation_status defaults to 'pending')
       const { data, error: dbError } = await supabase
@@ -316,7 +337,9 @@ export function useUploadMedia() {
         .select()
         .single()
 
-      if (dbError) throw dbError
+      if (dbError) {
+        throw dbError
+      }
       return data
     },
     onSuccess: (_data, { eventId }) => {
@@ -366,7 +389,9 @@ async function resolveArtistId(
       .select('id')
       .eq('musicbrainz_id', artistMbid)
       .maybeSingle()
-    if (data) return data.id
+    if (data) {
+      return data.id
+    }
   }
 
   // 2. Look up by slug
@@ -376,7 +401,9 @@ async function resolveArtistId(
     .select('id')
     .eq('slug', slug)
     .maybeSingle()
-  if (bySlug) return bySlug.id
+  if (bySlug) {
+    return bySlug.id
+  }
 
   // 3. Insert new
   const { data, error } = await supabase
@@ -389,7 +416,9 @@ async function resolveArtistId(
     })
     .select('id')
     .single()
-  if (error) throw error
+  if (error) {
+    throw error
+  }
   return data.id
 }
 
@@ -408,7 +437,9 @@ async function resolveVenueId(
     .select('id')
     .eq('slug', slug)
     .maybeSingle()
-  if (existing) return existing.id
+  if (existing) {
+    return existing.id
+  }
 
   const { data, error } = await supabase
     .from('venues')
@@ -423,7 +454,9 @@ async function resolveVenueId(
     })
     .select('id')
     .single()
-  if (error) throw error
+  if (error) {
+    throw error
+  }
   return data.id
 }
 
@@ -474,7 +507,9 @@ export function useLogEvent() {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       if (input.type === 'sport' && input.sportDetails) {
         const { lineups, ...sportDetailsRest } = input.sportDetails
@@ -483,7 +518,9 @@ export function useLogEvent() {
           lineups: lineups ?? null,
           ...sportDetailsRest
         })
-        if (sdError) throw sdError
+        if (sdError) {
+          throw sdError
+        }
       }
 
       return data

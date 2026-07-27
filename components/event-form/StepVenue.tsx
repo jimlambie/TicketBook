@@ -201,7 +201,7 @@ export default function StepVenue({
                 {showUseAsNew && (
                   <TouchableOpacity style={s.useAsNewRow} onPress={handleUseAsNew} activeOpacity={0.7}>
                     <Ionicons name="add-circle-outline" size={14} color={C.accent} />
-                    <Text style={s.useAsNewText}>use "{query.trim()}" as new venue</Text>
+                    <Text style={s.useAsNewText}>use &quot;{query.trim()}&quot; as new venue</Text>
                   </TouchableOpacity>
                 )}
               </View>

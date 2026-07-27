@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, AccessibilityInfo, Animated, Easing } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
@@ -36,20 +36,22 @@ export default function PublishSuccessScreen() {
   const metaOpacity = useRef(new Animated.Value(0)).current
   const hintOpacity = useRef(new Animated.Value(0)).current
 
-  function goToFeed() {
+  const goToFeed = useCallback(() => {
     router.replace('/(tabs)/feed')
-  }
+  }, [])
 
-  function dismiss() {
+  const dismiss = useCallback(() => {
     Animated.timing(exitOpacity, {
       toValue: 0,
       duration: 340,
       easing: EASE_IN,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      if (finished) goToFeed()
+      if (finished) {
+        goToFeed()
+      }
     })
-  }
+  }, [exitOpacity, goToFeed])
 
   // Entrance animation + reduced-motion check
   useEffect(() => {
@@ -84,6 +86,9 @@ export default function PublishSuccessScreen() {
         anim(hintOpacity, 1, 500, 1100),
       ]).start()
     })
+    // Animated.Value refs never change identity; stub is set once from route
+    // params on mount. Safe to include — this effect still only runs once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Count-up the stub number
@@ -120,7 +125,7 @@ export default function PublishSuccessScreen() {
       }
     }, AUTO_DISMISS_MS)
     return () => clearTimeout(t)
-  }, [reducedMotion])
+  }, [reducedMotion, dismiss, goToFeed])
 
   const dateStr = (() => {
     try {

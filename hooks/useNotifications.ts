@@ -104,5 +104,8 @@ export function useSetupNotifications() {
       cancelled = true
       sub?.remove()
     }
+    // Depends on the user id, not the supabaseUser object, so an unrelated
+    // store update with the same user doesn't re-register notifications.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabaseUser?.id])
 }

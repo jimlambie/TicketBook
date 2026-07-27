@@ -59,7 +59,7 @@ interface StepArtistProps {
 }
 
 export default function StepArtist({
-  type, primary, onChangePrimary, artistMbid, onSelectArtist,
+  type, primary, onChangePrimary, artistMbid: _artistMbid, onSelectArtist,
   secondary, onChangeSecondary, onNext, onBack,
 }: StepArtistProps) {
   const [focusedField, setFocusedField] = useState<string | null>(null)

@@ -70,11 +70,17 @@ export default function FeedScreen() {
 
   // Debounce search input → query
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
     debounceRef.current = setTimeout(() => {
       setSearchQuery(searchInput)
     }, 300)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+    }
   }, [searchInput])
 
   function openSearch() {
@@ -123,7 +129,7 @@ export default function FeedScreen() {
   if (!searchActive && active.isError) {
     return (
       <View style={s.centered}>
-        <Text style={s.errorText}>couldn't load feed</Text>
+        <Text style={s.errorText}>couldn&apos;t load feed</Text>
         <TouchableOpacity style={s.retryBtn} onPress={() => active.refetch()} activeOpacity={0.7}>
           <Text style={s.retryBtnText}>try again</Text>
         </TouchableOpacity>

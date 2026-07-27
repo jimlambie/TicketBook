@@ -37,7 +37,7 @@ export default function OnboardingScreen() {
     <SafeAreaView style={s.root} edges={['top', 'bottom']}>
       <View style={s.upper}>
         <View style={s.stackWrap}>
-          {STUB_PREVIEWS.map((stub, i) => {
+          {STUB_PREVIEWS.map((stub) => {
             const tc = TYPE_COLORS[stub.type]
             return (
               <View

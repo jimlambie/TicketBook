@@ -68,7 +68,7 @@ export default function UsernameScreen() {
         clearTimeout(debounceRef.current)
       }
     }
-  }, [username])
+  }, [username, supabaseUser?.id])
 
   async function handleContinue() {
     if (checkStatus !== 'available') {

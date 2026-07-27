@@ -175,7 +175,7 @@ export default function ExploreScreen() {
             <Ionicons name="qr-code-outline" size={22} color={C.muted} />
             <View style={s.qrHintText}>
               <Text style={s.qrHintTitle}>Add via QR code</Text>
-              <Text style={s.qrHintSub}>Show your code or scan a friend's</Text>
+              <Text style={s.qrHintSub}>Show your code or scan a friend&apos;s</Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={C.muted} />
           </TouchableOpacity>

@@ -111,7 +111,9 @@ export const COUNTRIES: Country[] = [
 
 export function searchCountries(query: string, limit = 6): Country[] {
   const q = query.trim().toLowerCase()
-  if (!q) return []
+  if (!q) {
+    return []
+  }
 
   const startsWith = COUNTRIES.filter(c => c.name.toLowerCase().startsWith(q))
   const contains = COUNTRIES.filter(

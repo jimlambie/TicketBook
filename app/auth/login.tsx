@@ -119,7 +119,7 @@ export default function LoginScreen() {
           onPress={() => router.replace('/auth/signup')}
           activeOpacity={0.7}
         >
-          <Text style={s.createMuted}>Don't have an account? </Text>
+          <Text style={s.createMuted}>Don&apos;t have an account? </Text>
           <Text style={s.createAccent}>Create one</Text>
         </TouchableOpacity>
       </ScrollView>

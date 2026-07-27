@@ -52,7 +52,7 @@ export default function QRCodeScreen() {
           activeOpacity={0.7}
         >
           <Ionicons name="scan-outline" size={18} color={C.accent} />
-          <Text style={s.scanBtnText}>Scan a friend's code instead</Text>
+          <Text style={s.scanBtnText}>Scan a friend&apos;s code instead</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

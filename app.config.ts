@@ -4,14 +4,22 @@ const IS_DEV = process.env.EXPO_PUBLIC_ENV === 'development'
 const IS_STAGING = process.env.EXPO_PUBLIC_ENV === 'staging'
 
 const getUniqueIdentifier = () => {
-  if (IS_DEV) return 'com.twentysevenworks.bricksandgiggles.ticketbook.dev'
-  if (IS_STAGING) return 'com.twentysevenworks.bricksandgiggles.ticketbook.staging'
+  if (IS_DEV) {
+    return 'com.twentysevenworks.bricksandgiggles.ticketbook.dev'
+  }
+  if (IS_STAGING) {
+    return 'com.twentysevenworks.bricksandgiggles.ticketbook.staging'
+  }
   return 'com.twentysevenworks.bricksandgiggles.ticketbook'
 }
 
 const getAppName = () => {
-  if (IS_DEV) return 'TicketBook.io (Dev)'
-  if (IS_STAGING) return 'TicketBook.io (Staging)'
+  if (IS_DEV) {
+    return 'TicketBook.io (Dev)'
+  }
+  if (IS_STAGING) {
+    return 'TicketBook.io (Staging)'
+  }
   return 'TicketBook.io'
 }
 

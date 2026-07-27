@@ -23,7 +23,10 @@ export default function WelcomeScreen() {
     if (session) {
       router.replace('/(tabs)/feed')
     }
-  }, [session?.user?.id])
+    // Depends on the user id, not the session object, so token refreshes
+    // don't retrigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, router])
 
   async function handleGoogle() {
     try {

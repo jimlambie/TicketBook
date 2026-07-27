@@ -122,7 +122,7 @@ export function useRespondToTag() {
   return useMutation({
     mutationFn: async ({
       attendeeId,
-      eventId,
+      eventId: _eventId,
       accept,
     }: {
       attendeeId: string

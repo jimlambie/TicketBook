@@ -12,7 +12,7 @@ import { useFriends } from '@/hooks/useFriends'
 import { useAuthStore } from '@/stores/authStore'
 import { COUNTRIES } from '@/constants/countries'
 import { C, F, eventTypeStyle } from '@/constants/design'
-import type { EventFeedRow, Json, Visibility } from '@/lib/database.types'
+import type { EventFeedRow, Visibility } from '@/lib/database.types'
 import type { Song } from '@/lib/draft'
 
 const SCREEN = Dimensions.get('window')
@@ -69,7 +69,7 @@ export default function EventDetailScreen() {
           <Ionicons name="chevron-back" size={24} color={C.muted} />
         </TouchableOpacity>
         <View style={s.centered}>
-          <Text style={s.errorText}>couldn't load event</Text>
+          <Text style={s.errorText}>couldn&apos;t load event</Text>
           <TouchableOpacity style={s.retryBtn} onPress={() => refetch()} activeOpacity={0.7}>
             <Text style={s.retryBtnText}>try again</Text>
           </TouchableOpacity>
@@ -444,8 +444,6 @@ function LineupsSection({
   homeLineup: string[]
   awayLineup: string[]
 }) {
-  const maxRows = Math.max(homeLineup.length, awayLineup.length)
-
   return (
     <View style={s.lineupsSection}>
       <Text style={s.sectionLabel}>lineups</Text>
