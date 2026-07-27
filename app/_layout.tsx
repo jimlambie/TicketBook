@@ -7,7 +7,9 @@ import { useFonts } from 'expo-font'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
+import { usePurchasesStore } from '@/stores/purchasesStore'
 import { useSetupNotifications } from '@/hooks/useNotifications'
+import { PREMIUM_ENABLED } from '@/lib/features'
 
 SplashScreen.preventAutoHideAsync()
 
@@ -41,7 +43,10 @@ function RootLayout() {
 
   useEffect(() => {
     initialize()
-  }, [])
+    if (PREMIUM_ENABLED) {
+      usePurchasesStore.getState().initialize()
+    }
+  }, [initialize])
 
   // Diagnoses the splash-screen hang reported on physical devices: useFonts
   // never settles there, and a swallowed error/pending promise throws
@@ -49,7 +54,9 @@ function RootLayout() {
   // forces a report (with the underlying error, if any) and unblocks the UI
   // instead of hanging on the splash screen forever.
   useEffect(() => {
-    if (fontsLoaded || fontError) return
+    if (fontsLoaded || fontError) {
+      return
+    }
 
     const timer = setTimeout(() => {
       Sentry.captureMessage('Splash hang: useFonts unresolved after 8s', 'warning')
@@ -69,7 +76,9 @@ function RootLayout() {
   // auth screens (login.tsx explicit redirect, welcome.tsx session watcher).
   // index.tsx covers the cold-start case.
   useEffect(() => {
-    if (isLoading) return
+    if (isLoading) {
+      return
+    }
     if (!didInit.current) {
       didInit.current = true
       return
@@ -77,6 +86,9 @@ function RootLayout() {
     if (!session) {
       router.replace('/auth/onboarding')
     }
+    // Depends on the user id specifically, not the session object, so token
+    // refreshes (which produce a new session with the same user) don't retrigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, isLoading])
 
   useEffect(() => {
@@ -85,7 +97,9 @@ function RootLayout() {
     }
   }, [ready])
 
-  if (!ready) return null
+  if (!ready) {
+    return null
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

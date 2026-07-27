@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { User } from '@/lib/database.types'
+import { usePurchasesStore } from '@/stores/purchasesStore'
+import { PREMIUM_ENABLED } from '@/lib/features'
 
 interface AuthState {
   session: Session | null
@@ -41,6 +43,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (session?.user) {
         await get().fetchProfile(session.user.id)
+        if (PREMIUM_ENABLED) {
+          await usePurchasesStore.getState().identify(session.user.id)
+        }
       }
 
       // Listen for auth state changes
@@ -52,8 +57,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         if (session?.user) {
           await get().fetchProfile(session.user.id)
+          if (PREMIUM_ENABLED) {
+            await usePurchasesStore.getState().identify(session.user.id)
+          }
         } else {
           set({ profile: null, isOnboarded: false })
+          if (PREMIUM_ENABLED) {
+            await usePurchasesStore.getState().reset()
+          }
         }
       })
     } catch (error) {
@@ -119,7 +130,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         redirectTo: 'ticketbook://auth/callback'
       }
     })
-    if (error) throw error
+    if (error) {
+      throw error
+    }
   },
 
   signInWithApple: async () => {
@@ -129,7 +142,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         redirectTo: 'ticketbook://auth/callback'
       }
     })
-    if (error) throw error
+    if (error) {
+      throw error
+    }
   },
 
   signOut: async () => {
@@ -144,7 +159,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   updateProfile: async (updates: Partial<User>) => {
     const { supabaseUser } = get()
-    if (!supabaseUser) throw new Error('Not authenticated')
+    if (!supabaseUser) {
+      throw new Error('Not authenticated')
+    }
 
     const { data, error } = await supabase
       .from('users')
@@ -153,7 +170,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      throw error
+    }
     set({ profile: data })
   }
 }))

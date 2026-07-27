@@ -8,6 +8,7 @@ import { format, parseISO } from 'date-fns'
 import { C, F, eventTypeStyle } from '@/constants/design'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveInsights } from '@/hooks/useArchiveInsights'
+import { PREMIUM_ENABLED } from '@/lib/features'
 import { supabase } from '@/lib/supabase'
 import type { UserStat, Achievement } from '@/lib/database.types'
 
@@ -56,7 +57,7 @@ function useStatsData(userId: string) {
 export default function StatsScreen() {
   const { profile } = useAuthStore()
   const { data, isLoading } = useStatsData(profile?.id ?? '')
-  const isPremium = profile?.plan === 'premium'
+  const isPremium = PREMIUM_ENABLED && profile?.plan === 'premium'
   const { data: insights, isLoading: insightsLoading } = useArchiveInsights(profile?.id ?? '', isPremium)
   const [showInsightsInfo, setShowInsightsInfo] = useState(false)
 
@@ -172,7 +173,7 @@ export default function StatsScreen() {
         )}
 
         {/* ── Archive insights ─────────────────────────────── */}
-        {totalCount > 0 && (
+        {PREMIUM_ENABLED && totalCount > 0 && (
           <Section label="archive insights">
             {isPremium ? (
               insightsLoading ? (

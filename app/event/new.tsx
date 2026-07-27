@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { format } from 'date-fns'
 import { useLogEvent, useUploadMedia } from '@/hooks/useEvents'
 import { useTagFriend } from '@/hooks/useAttendees'
 import { useCreateSetlist } from '@/hooks/useCreateSetlist'
 import { useSetlistFm } from '@/hooks/useSetlistFm'
 import { useAuthStore } from '@/stores/authStore'
+import { PREMIUM_ENABLED } from '@/lib/features'
 import {
   saveDraft, loadDraft, clearDraft, hasDraft,
   DRAFT_DEFAULTS,
@@ -58,7 +58,7 @@ export default function NewEventScreen() {
   const [publishError, setPublishError] = useState<string | null>(null)
 
   const { supabaseUser, profile } = useAuthStore()
-  const isPremium = profile?.plan === 'premium'
+  const isPremium = PREMIUM_ENABLED && profile?.plan === 'premium'
   const logEvent = useLogEvent()
   const uploadMedia = useUploadMedia()
   const createSetlist = useCreateSetlist()

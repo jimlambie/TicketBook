@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { router } from 'expo-router'
 import { C, F } from '@/constants/design'
+import { PREMIUM_ENABLED } from '@/lib/features'
 import type { Photo } from '@/lib/draft'
 
 interface StepMediaProps {
@@ -20,7 +21,7 @@ interface StepMediaProps {
 }
 
 export default function StepMedia({
-  ticketImageUri, ticketMimeType, onSetTicketImage,
+  ticketImageUri, ticketMimeType: _ticketMimeType, onSetTicketImage,
   photos, onSetPhotos, videoUri, onSetVideo,
   isPremium, onNext, onBack,
 }: StepMediaProps) {
@@ -145,7 +146,7 @@ export default function StepMedia({
             <Ionicons name="images-outline" size={20} color={C.muted} />
             <Text style={s.addBtnText}>{photos.length === 0 ? 'add photos' : 'add more'}</Text>
           </TouchableOpacity>
-        ) : !isPremium && (
+        ) : !isPremium && PREMIUM_ENABLED && (
           <>
             <TouchableOpacity style={s.lockedBtn} onPress={() => setShowPhotoInfo(v => !v)} activeOpacity={0.8}>
               <Ionicons name="lock-closed-outline" size={16} color={C.muted} />

@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { C, F } from '@/constants/design'
+import { PREMIUM_ENABLED } from '@/lib/features'
 import type { SetlistFmResult } from '@/hooks/useSetlistFm'
 import type { Song } from '@/lib/draft'
 
@@ -63,7 +64,7 @@ export default function StepSetlist({
     onChangeSongs(reindexed)
   }
 
-  const showSourceToggle = apiKeyAvailable && !!artistMbid
+  const showSourceToggle = PREMIUM_ENABLED && apiKeyAvailable && !!artistMbid
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -126,7 +127,7 @@ export default function StepSetlist({
               </View>
             )}
             {!fmFetching && fmError && (
-              <Text style={s.fmError}>couldn't reach setlist.fm — switch to manual</Text>
+              <Text style={s.fmError}>couldn&apos;t reach setlist.fm — switch to manual</Text>
             )}
             {!fmFetching && !fmError && fmResults.length === 0 && (
               <View style={s.fmEmpty}>

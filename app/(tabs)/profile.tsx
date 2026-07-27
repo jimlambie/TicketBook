@@ -21,6 +21,8 @@ import { C, F } from '@/constants/design'
 import { useAuthStore } from '@/stores/authStore'
 import { supabase } from '@/lib/supabase'
 import { useFriends, useRemoveFriend } from '@/hooks/useFriends'
+import { usePurchasesStore } from '@/stores/purchasesStore'
+import { PREMIUM_ENABLED } from '@/lib/features'
 import UserCard from '@/components/UserCard'
 
 function useMyLeaderboardEntry(userId: string) {
@@ -50,12 +52,16 @@ export default function ProfileScreen() {
   const { data: stats } = useMyLeaderboardEntry(profile?.id ?? '')
   const removeFriend = useRemoveFriend()
 
+  const { isPro, presentPaywallIfNeeded, presentCustomerCenter, restorePurchases } =
+    usePurchasesStore()
+  const [restoring, setRestoring] = useState(false)
+
   if (!profile) {
     return null
   }
 
   const initials = profile.username.slice(0, 2).toUpperCase()
-  const isPremium = profile.plan === 'premium'
+  const isPremium = PREMIUM_ENABLED && profile.plan === 'premium'
 
   function openEdit() {
     setDisplayName(profile?.display_name ?? '')
@@ -121,6 +127,35 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Could not upload avatar. Please try again.')
     } finally {
       setUploadingAvatar(false)
+    }
+  }
+
+  async function handleProPress() {
+    if (isPro) {
+      try {
+        await presentCustomerCenter()
+      } catch {
+        Alert.alert('Error', 'Could not open subscription management. Please try again.')
+      }
+      return
+    }
+
+    try {
+      await presentPaywallIfNeeded()
+    } catch {
+      Alert.alert('Error', 'Could not load the paywall. Please try again.')
+    }
+  }
+
+  async function handleRestore() {
+    setRestoring(true)
+    try {
+      await restorePurchases()
+      Alert.alert('Restored', 'Your purchases have been restored.')
+    } catch {
+      Alert.alert('Error', 'Could not restore purchases. Please try again.')
+    } finally {
+      setRestoring(false)
     }
   }
 
@@ -199,21 +234,37 @@ export default function ProfileScreen() {
 
         <View style={s.separator} />
 
-        {/* Collector */}
-        <TouchableOpacity
-          style={s.collectorRow}
-          onPress={() => router.push('/collector' as any)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={isPremium ? 'star' : 'star-outline'} size={18} color={isPremium ? C.accent : C.muted} />
-          <View style={s.collectorText}>
-            <Text style={s.collectorTitle}>Collector</Text>
-            <Text style={s.collectorSub}>
-              {isPremium ? 'Active — thanks for your support' : 'Up to 10 photos, automatic setlists'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={14} color={C.muted} />
-        </TouchableOpacity>
+        {PREMIUM_ENABLED && (
+          <>
+            {/* Collector */}
+            <TouchableOpacity
+              style={s.collectorRow}
+              onPress={() => router.push('/collector' as any)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={isPremium ? 'star' : 'star-outline'} size={18} color={isPremium ? C.accent : C.muted} />
+              <View style={s.collectorText}>
+                <Text style={s.collectorTitle}>Collector</Text>
+                <Text style={s.collectorSub}>
+                  {isPremium ? 'Active — thanks for your support' : 'Up to 10 photos, automatic setlists'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={14} color={C.muted} />
+            </TouchableOpacity>
+
+            {/* TicketBook.io Pro */}
+            <TouchableOpacity style={s.collectorRow} onPress={handleProPress} activeOpacity={0.7}>
+              <Ionicons name={isPro ? 'star' : 'star-outline'} size={18} color={isPro ? C.accent : C.muted} />
+              <View style={s.collectorText}>
+                <Text style={s.collectorTitle}>TicketBook.io Pro</Text>
+                <Text style={s.collectorSub}>
+                  {isPro ? 'Active — manage your subscription' : 'Unlock lifetime access to Pro features'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={14} color={C.muted} />
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Friends list */}
         {friends.length > 0 && (
@@ -250,6 +301,22 @@ export default function ProfileScreen() {
               <Text style={s.hintSub}>Search by username or share your QR code</Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={C.muted} />
+          </TouchableOpacity>
+        )}
+
+        {/* Restore purchases */}
+        {PREMIUM_ENABLED && (
+          <TouchableOpacity
+            style={s.restoreBtn}
+            onPress={handleRestore}
+            disabled={restoring}
+            activeOpacity={0.7}
+          >
+            {restoring ? (
+              <ActivityIndicator size="small" color={C.muted} />
+            ) : (
+              <Text style={s.restoreText}>Restore purchases</Text>
+            )}
           </TouchableOpacity>
         )}
 
@@ -529,6 +596,17 @@ const s = StyleSheet.create({
   hintSub: {
     fontFamily: F.mono,
     fontSize: 11,
+    color: C.muted,
+  },
+  // Restore purchases
+  restoreBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginHorizontal: 16,
+  },
+  restoreText: {
+    fontFamily: F.mono,
+    fontSize: 12,
     color: C.muted,
   },
   // Sign out
