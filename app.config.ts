@@ -3,13 +3,12 @@ import { ExpoConfig, ConfigContext } from 'expo/config'
 const IS_DEV = process.env.EXPO_PUBLIC_ENV === 'development'
 const IS_STAGING = process.env.EXPO_PUBLIC_ENV === 'staging'
 
+// All environments share one bundle identifier/package name so a single
+// Firebase app registration (and one App Store Connect / Play Console
+// listing) covers dev, staging, and production. Trade-off: installing a
+// build from one environment overwrites whichever one is already on the
+// device, since they're the same app as far as iOS/Android are concerned.
 const getUniqueIdentifier = () => {
-  if (IS_DEV) {
-    return 'com.twentysevenworks.bricksandgiggles.ticketbook.dev'
-  }
-  if (IS_STAGING) {
-    return 'com.twentysevenworks.bricksandgiggles.ticketbook.staging'
-  }
   return 'com.twentysevenworks.bricksandgiggles.ticketbook'
 }
 
