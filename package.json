@@ -72,5 +72,8 @@
   "jest": {
     "preset": "jest-expo"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "react-dom": "19.2.0"
+  }
 }
