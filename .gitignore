@@ -19,3 +19,6 @@ ios
 android
 supabase/.temp/
 google-services.json
+
+# npm is the package manager (EAS runs npm ci)
+yarn.lock
