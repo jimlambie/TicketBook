@@ -1,54 +1,53 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
+  ActivityIndicator,
+  Image,
   Platform,
   StyleSheet,
   SafeAreaView,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore, type SocialSignInResult } from '@/stores/authStore'
 import { C, F } from '@/constants/design'
 
 export default function WelcomeScreen() {
   const router = useRouter()
-  const { signInWithGoogle, signInWithApple, session } = useAuthStore()
+  const { signInWithGoogle, signInWithApple } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState<'apple' | 'google' | null>(null)
 
-  // Handles OAuth return: the deep-link callback fires onAuthStateChange,
-  // which sets session in the store. This effect catches that and navigates.
-  useEffect(() => {
-    if (session) {
-      router.replace('/(tabs)/feed')
-    }
-    // Depends on the user id, not the session object, so token refreshes
-    // don't retrigger this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, router])
-
-  async function handleGoogle() {
+  async function handleSocial(
+    provider: 'apple' | 'google',
+    signIn: () => Promise<SocialSignInResult>
+  ) {
+    setError(null)
+    setPending(provider)
     try {
-      setError(null)
-      await signInWithGoogle()
+      const result = await signIn()
+      if (result === 'new') {
+        router.replace('/auth/username')
+      } else if (result === 'existing') {
+        router.replace('/(tabs)/feed')
+      }
     } catch (e: any) {
-      setError(e?.message ?? 'Google sign-in failed')
-    }
-  }
-
-  async function handleApple() {
-    try {
-      setError(null)
-      await signInWithApple()
-    } catch (e: any) {
-      setError(e?.message ?? 'Apple sign-in failed')
+      setError(e?.message ?? `${provider === 'apple' ? 'Apple' : 'Google'} sign-in failed`)
+    } finally {
+      setPending(null)
     }
   }
 
   return (
     <SafeAreaView style={s.root}>
       <View style={s.upper}>
+        <Image
+          source={require('@/assets/adaptive-icon.png')}
+          style={s.backdrop}
+          resizeMode="contain"
+        />
         <Text style={s.wordmark}>TicketBook.io</Text>
         <Text style={s.tagline}>your event archive</Text>
         <Text style={s.counter}>#0001</Text>
@@ -58,15 +57,37 @@ export default function WelcomeScreen() {
         {error ? <Text style={s.error}>{error}</Text> : null}
 
         {Platform.OS === 'ios' && (
-          <TouchableOpacity style={s.appleBtn} onPress={handleApple} activeOpacity={0.85}>
-            <Ionicons name="logo-apple" size={20} color="#000" />
-            <Text style={s.appleBtnText}>Continue with Apple</Text>
+          <TouchableOpacity
+            style={[s.appleBtn, !!pending && s.btnDisabled]}
+            onPress={() => handleSocial('apple', signInWithApple)}
+            activeOpacity={0.85}
+            disabled={!!pending}
+          >
+            {pending === 'apple' ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <>
+                <Ionicons name="logo-apple" size={20} color="#000" />
+                <Text style={s.appleBtnText}>Continue with Apple</Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={s.googleBtn} onPress={handleGoogle} activeOpacity={0.85}>
-          <Ionicons name="logo-google" size={18} color="#5b8ce8" />
-          <Text style={s.googleBtnText}>Continue with Google</Text>
+        <TouchableOpacity
+          style={[s.googleBtn, !!pending && s.btnDisabled]}
+          onPress={() => handleSocial('google', signInWithGoogle)}
+          activeOpacity={0.85}
+          disabled={!!pending}
+        >
+          {pending === 'google' ? (
+            <ActivityIndicator color={C.text} />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={18} color="#5b8ce8" />
+              <Text style={s.googleBtnText}>Continue with Google</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         <View style={s.dividerRow}>
@@ -103,6 +124,13 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingBottom: 32,
+  },
+  // Ticket mark fills ~half of the icon canvas, so this renders ~240px wide.
+  backdrop: {
+    position: 'absolute',
+    width: 440,
+    height: 440,
+    opacity: 0.12,
   },
   upper: {
     flex: 1,
@@ -160,6 +188,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+  },
+  btnDisabled: {
+    opacity: 0.6,
   },
   googleBtnText: {
     fontFamily: F.monoMedium,

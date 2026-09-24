@@ -12,6 +12,17 @@ const getUniqueIdentifier = () => {
   return 'com.twentysevenworks.bricksandgiggles.ticketbook'
 }
 
+// Google Sign-In on iOS needs the reversed iOS client ID registered as a
+// URL scheme, e.g. com.googleusercontent.apps.1234-abcd
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+const googleIosUrlScheme = GOOGLE_IOS_CLIENT_ID
+  ? `com.googleusercontent.apps.${GOOGLE_IOS_CLIENT_ID.replace('.apps.googleusercontent.com', '')}`
+  : null
+
+if (!googleIosUrlScheme) {
+  console.warn('EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is not set: Google sign-in will not work on iOS')
+}
+
 const getAppName = () => {
   if (IS_DEV) {
     return 'TicketBook.io (Dev)'
@@ -40,7 +51,9 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
   assetBundlePatterns: ['**/*'],
   ios: {
     bundleIdentifier: getUniqueIdentifier(),
+    appleTeamId: '4J5K4KB2CA',
     supportsTablet: false,
+    usesAppleSignIn: true,
     infoPlist: {
       NSCameraUsageDescription:
         'Used to scan and upload ticket photos and event images.',
@@ -93,6 +106,10 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-font',
     'expo-localization',
+    'expo-apple-authentication',
+    ...(googleIosUrlScheme
+      ? [['@react-native-google-signin/google-signin', { iosUrlScheme: googleIosUrlScheme }] as [string, object]]
+      : []),
     [
       '@sentry/react-native/expo',
       {

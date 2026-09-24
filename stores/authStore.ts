@@ -4,6 +4,10 @@ import { supabase } from '@/lib/supabase'
 import { User } from '@/lib/database.types'
 import { usePurchasesStore } from '@/stores/purchasesStore'
 import { PREMIUM_ENABLED } from '@/lib/features'
+import { getAppleCredential, getGoogleIdToken, signOutGoogle } from '@/lib/socialAuth'
+
+// 'new' means the account was just created and still needs a username.
+export type SocialSignInResult = 'cancelled' | 'new' | 'existing'
 
 interface AuthState {
   session: Session | null
@@ -15,11 +19,17 @@ interface AuthState {
   initialize: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
   signUpWithEmail: (email: string, password: string) => Promise<void>
-  signInWithGoogle: () => Promise<void>
-  signInWithApple: () => Promise<void>
+  signInWithGoogle: () => Promise<SocialSignInResult>
+  signInWithApple: () => Promise<SocialSignInResult>
   signOut: () => Promise<void>
   updateProfile: (updates: Partial<User>) => Promise<void>
   fetchProfile: (userId: string) => Promise<void>
+}
+
+// A profile created by the signup trigger and never edited (no username
+// chosen yet) belongs to an account that was just created.
+function isNewProfile(profile: User | null) {
+  return !!profile && profile.created_at === profile.updated_at
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -124,31 +134,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signInWithGoogle: async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const idToken = await getGoogleIdToken()
+    if (!idToken) {
+      return 'cancelled'
+    }
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'google',
-      options: {
-        redirectTo: 'ticketbook://auth/callback'
-      }
+      token: idToken
     })
     if (error) {
       throw error
     }
+
+    set({ session: data.session, supabaseUser: data.user })
+    await get().fetchProfile(data.user.id)
+    return isNewProfile(get().profile) ? 'new' : 'existing'
   },
 
   signInWithApple: async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const credential = await getAppleCredential()
+    if (!credential) {
+      return 'cancelled'
+    }
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
-      options: {
-        redirectTo: 'ticketbook://auth/callback'
-      }
+      token: credential.idToken,
+      nonce: credential.nonce
     })
     if (error) {
       throw error
     }
+
+    set({ session: data.session, supabaseUser: data.user })
+    await get().fetchProfile(data.user.id)
+    const isNew = isNewProfile(get().profile)
+
+    // Apple's ID token doesn't include the name, so the signup trigger
+    // falls back to the email prefix. Apple only sends it once, here.
+    if (isNew && credential.fullName) {
+      try {
+        await get().updateProfile({ display_name: credential.fullName })
+      } catch (e) {
+        console.error('Failed to save Apple display name:', e)
+      }
+    }
+
+    return isNew ? 'new' : 'existing'
   },
 
   signOut: async () => {
     await supabase.auth.signOut()
+    await signOutGoogle()
     set({
       session: null,
       supabaseUser: null,
