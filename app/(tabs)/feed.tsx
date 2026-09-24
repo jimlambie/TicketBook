@@ -17,6 +17,7 @@ import { useMyFeed, useFriendsFeed, useSearchMyEvents } from '@/hooks/useEvents'
 import { useFriends } from '@/hooks/useFriends'
 import EventCard from '@/components/EventCard'
 import SportCard from '@/components/SportCard'
+import type { CardOwner } from '@/components/OwnerBadge'
 import type { EventFeedRow } from '@/lib/database.types'
 import { C, F, eventTypeStyle } from '@/constants/design'
 
@@ -50,9 +51,9 @@ export default function FeedScreen() {
   const { data: friends = [] } = useFriends()
 
   const friendProfileMap = useMemo(() => {
-    const m = new Map<string, { username: string; display_name: string | null }>()
+    const m = new Map<string, CardOwner>()
     for (const f of friends) {
-      m.set(f.id, { username: f.username, display_name: f.display_name })
+      m.set(f.id, { username: f.username, display_name: f.display_name, avatar_url: f.avatar_url })
     }
     return m
   }, [friends])

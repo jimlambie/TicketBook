@@ -1,12 +1,16 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { format } from 'date-fns'
 import { EventFeedRow } from '@/lib/database.types'
-import { C, F } from '@/constants/design'
+import { C, F, eventTypeStyle } from '@/constants/design'
+import OwnerBadge, { type CardOwner } from '@/components/OwnerBadge'
+
+const typeStyle = eventTypeStyle.sport
 
 interface SportCardProps {
   event: EventFeedRow
   onPress?: () => void
-  owner?: { username: string; display_name: string | null }
+  owner?: CardOwner
 }
 
 function formatEventDate(dateStr: string): string {
@@ -46,7 +50,7 @@ export default function SportCard({ event, onPress, owner }: SportCardProps) {
   const awayTeam = sd?.away_team ?? undefined
   const homeScore = sd?.home_score ?? null
   const awayScore = sd?.away_score ?? null
-  const competition = sd?.competition ?? null
+  const competitionLine = [sd?.competition, sd?.season].filter(Boolean).join(' · ')
   const hasScores = homeScore != null && awayScore != null
   const homeColor = getTeamColor(homeScore, awayScore)
   const awayColor = getTeamColor(awayScore, homeScore)
@@ -54,51 +58,68 @@ export default function SportCard({ event, onPress, owner }: SportCardProps) {
 
   return (
     <Pressable style={s.card} onPress={onPress}>
-      <View style={s.header}>
-        <Text style={s.competition}>{competition ?? 'Sport'}</Text>
-        <View style={s.headerRight}>
-          {owner && <Text style={s.ownerBadge}>@{owner.username}</Text>}
+      <View style={s.hero}>
+        <View style={s.notchLeft} />
+        <View style={s.notchRight} />
+
+        <View style={s.pillRow}>
+          <View style={s.badges}>
+            <View style={s.pill}>
+              <Ionicons name="trophy" size={10} color={typeStyle.text} />
+              <Text style={s.pillLabel}>{typeStyle.label.toUpperCase()}</Text>
+            </View>
+            {owner && <OwnerBadge owner={owner} />}
+          </View>
           <Text style={s.headerDate}>{dateStr}</Text>
+        </View>
+
+        <View style={s.matchup}>
+          <View style={s.teamBlock}>
+            <Text style={[s.teamAbbr, { color: homeColor }]}>
+              {abbr(homeTeam)}
+            </Text>
+            <Text style={s.teamName} numberOfLines={2}>
+              {homeTeam ?? '—'}
+            </Text>
+          </View>
+
+          <View style={s.scoreBlock}>
+            {hasScores ? (
+              <View style={s.scoreRow}>
+                <Text style={[s.scoreNum, { color: homeColor }]}>
+                  {homeScore}
+                </Text>
+                <Text style={s.scoreSep}> – </Text>
+                <Text style={[s.scoreNum, { color: awayColor }]}>
+                  {awayScore}
+                </Text>
+              </View>
+            ) : (
+              <Text style={s.vsText}>vs</Text>
+            )}
+            {hasScores && <Text style={s.scoreLabel}>FULL TIME</Text>}
+          </View>
+
+          <View style={s.teamBlockRight}>
+            <Text style={[s.teamAbbr, { color: awayColor }]}>
+              {abbr(awayTeam)}
+            </Text>
+            <Text style={[s.teamName, s.teamNameRight]} numberOfLines={2}>
+              {awayTeam ?? '—'}
+            </Text>
+          </View>
         </View>
       </View>
 
-      <View style={s.body}>
-        <View style={s.teamBlock}>
-          <Text style={[s.teamAbbr, { color: homeColor }]}>
-            {abbr(homeTeam)}
-          </Text>
-          <Text style={s.teamName} numberOfLines={2}>
-            {homeTeam ?? '—'}
-          </Text>
-        </View>
+      <View style={s.separator} />
 
-        <View style={s.scoreBlock}>
-          {hasScores ? (
-            <View style={s.scoreRow}>
-              <Text style={[s.scoreNum, { color: homeColor }]}>
-                {homeScore}
-              </Text>
-              <Text style={s.scoreSep}> – </Text>
-              <Text style={[s.scoreNum, { color: awayColor }]}>
-                {awayScore}
-              </Text>
-            </View>
-          ) : (
-            <Text style={s.vsText}>vs</Text>
-          )}
-          <Text style={s.scoreLabel}>
-            {hasScores ? 'FULL TIME' : dateStr.toUpperCase()}
-          </Text>
-        </View>
-
-        <View style={s.teamBlockRight}>
-          <Text style={[s.teamAbbr, { color: awayColor }]}>
-            {abbr(awayTeam)}
-          </Text>
-          <Text style={[s.teamName, s.teamNameRight]} numberOfLines={2}>
-            {awayTeam ?? '—'}
-          </Text>
-        </View>
+      <View style={s.footer}>
+        <Text style={s.competition} numberOfLines={1}>
+          {competitionLine ? competitionLine.toUpperCase() : '—'}
+        </Text>
+        <Text style={s.stubNumber}>
+          #{String(event.stub_number ?? 0).padStart(4, '0')}
+        </Text>
       </View>
     </Pressable>
   )
@@ -112,39 +133,91 @@ const s = StyleSheet.create({
     borderRadius: C.radius,
     overflow: 'hidden',
   },
-  header: {
-    backgroundColor: '#0f1520',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 0.5,
-    borderBottomColor: C.border,
+  hero: {
+    position: 'relative',
+    backgroundColor: typeStyle.heroBg,
+    padding: 16,
+    paddingBottom: 20,
   },
-  competition: {
+  notchLeft: {
+    position: 'absolute',
+    bottom: -8,
+    left: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: C.bg,
+  },
+  notchRight: {
+    position: 'absolute',
+    bottom: -8,
+    right: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: C.bg,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 0.5,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: typeStyle.bg,
+    borderColor: typeStyle.border,
+  },
+  pillLabel: {
     fontFamily: F.mono,
     fontSize: 9,
-    color: C.muted,
     letterSpacing: 0.1 * 9,
+    color: typeStyle.text,
   },
-  headerRight: {
-    alignItems: 'flex-end',
-    gap: 2,
+  separator: {
+    height: 0.5,
+    backgroundColor: C.border2,
   },
-  ownerBadge: {
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  competition: {
+    flex: 1,
     fontFamily: F.mono,
     fontSize: 10,
     color: C.muted,
-    letterSpacing: 0.04 * 10,
+    letterSpacing: 0.08 * 10,
+  },
+  stubNumber: {
+    fontFamily: F.mono,
+    fontSize: 10,
+    color: C.muted,
+    letterSpacing: 0.08 * 10,
+  },
+  badges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
   },
   headerDate: {
     fontFamily: F.mono,
     fontSize: 10,
     color: C.muted,
   },
-  body: {
-    padding: 16,
+  matchup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

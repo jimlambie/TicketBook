@@ -3,11 +3,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { format } from 'date-fns'
 import { EventFeedRow } from '@/lib/database.types'
 import { C, F, eventTypeStyle } from '@/constants/design'
+import OwnerBadge, { type CardOwner } from '@/components/OwnerBadge'
 
 interface EventCardProps {
   event: EventFeedRow
   onPress?: () => void
-  owner?: { username: string; display_name: string | null }
+  owner?: CardOwner
 }
 
 const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -49,23 +50,24 @@ export default function EventCard({ event, onPress, owner }: EventCardProps) {
         <View style={[s.notchRight, { backgroundColor: C.bg }]} />
 
         <View style={s.pillRow}>
-          <View
-            style={[
-              s.pill,
-              {
-                backgroundColor: typeStyle.bg,
-                borderColor: typeStyle.border,
-              },
-            ]}
-          >
-            <Ionicons name={iconName} size={10} color={typeStyle.text} />
-            <Text style={[s.pillLabel, { color: typeStyle.text }]}>
-              {typeStyle.label.toUpperCase()}
-            </Text>
+          <View style={s.badges}>
+            <View
+              style={[
+                s.pill,
+                {
+                  backgroundColor: typeStyle.bg,
+                  borderColor: typeStyle.border,
+                },
+              ]}
+            >
+              <Ionicons name={iconName} size={10} color={typeStyle.text} />
+              <Text style={[s.pillLabel, { color: typeStyle.text }]}>
+                {typeStyle.label.toUpperCase()}
+              </Text>
+            </View>
+            {owner && <OwnerBadge owner={owner} />}
           </View>
-          {owner && (
-            <Text style={s.ownerBadge}>@{owner.username}</Text>
-          )}
+          <Text style={s.headerDate}>{dateStr}</Text>
         </View>
 
         <Text style={s.artistName} numberOfLines={2}>
@@ -92,10 +94,6 @@ export default function EventCard({ event, onPress, owner }: EventCardProps) {
           <View style={s.metaItem}>
             <Text style={s.metaKey}>VENUE</Text>
             <Text style={s.metaVal} numberOfLines={1}>{venueName}</Text>
-          </View>
-          <View style={s.metaItem}>
-            <Text style={s.metaKey}>DATE</Text>
-            <Text style={s.metaVal}>{dateStr}</Text>
           </View>
           <View style={s.metaItem}>
             <Text style={s.metaKey}>CITY</Text>
@@ -177,13 +175,19 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 10,
   },
-  ownerBadge: {
+  badges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  headerDate: {
     fontFamily: F.mono,
     fontSize: 10,
     color: C.muted,
-    letterSpacing: 0.04 * 10,
   },
   pill: {
     flexDirection: 'row',
@@ -212,18 +216,17 @@ const s = StyleSheet.create({
     fontFamily: F.displayItalic,
     fontSize: 13,
     color: C.accent,
-    marginBottom: 12,
   },
   sportScore: {
     fontFamily: F.display,
     fontSize: 28,
     letterSpacing: -0.56,
     color: C.text,
-    marginBottom: 14,
   },
   metaRow: {
     flexDirection: 'row',
     gap: 16,
+    marginTop: 12,
   },
   metaItem: {
     flexDirection: 'column',

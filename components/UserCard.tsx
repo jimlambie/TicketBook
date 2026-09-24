@@ -13,7 +13,7 @@ export interface UserCardUser {
 
 const AVATAR_COLORS = ['#5a944a', '#4a6cb8', '#b8764a', '#8b4ab8', '#4ab8a0', '#b84a4a']
 
-function avatarColor(username: string): string {
+export function avatarColor(username: string): string {
   let hash = 0
   for (let i = 0; i < username.length; i++) {
     hash = username.charCodeAt(i) + ((hash << 5) - hash)
