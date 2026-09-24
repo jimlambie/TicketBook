@@ -201,7 +201,6 @@ interface CreateEventPayload {
   visibility: Event['visibility']
   rating?: number | null
   review_text?: string | null
-  notes?: string | null
 }
 
 export function useCreateEvent() {
@@ -259,6 +258,8 @@ export function useUpdateEvent(id: string) {
       queryClient.invalidateQueries({
         queryKey: eventKeys.feed(supabaseUser!.id)
       })
+      queryClient.invalidateQueries({ queryKey: ['archive-insights'] })
+      queryClient.invalidateQueries({ queryKey: ['year-in-review'] })
     }
   })
 }
@@ -366,7 +367,6 @@ export interface LogEventInput {
   visibility: Event['visibility']
   rating?: number | null
   reviewText?: string | null
-  notes?: string | null
   sportDetails?: {
     home_team: string
     away_team: string
@@ -501,8 +501,7 @@ export function useLogEvent() {
           country_code: input.venueCountryCode ?? null,
           visibility: input.visibility,
           rating: input.rating ?? null,
-          review_text: input.reviewText?.trim() ?? null,
-          notes: input.notes?.trim() ?? null
+          review_text: input.reviewText?.trim() ?? null
         })
         .select()
         .single()

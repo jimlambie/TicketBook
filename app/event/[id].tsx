@@ -8,6 +8,7 @@ import { useEvent, useDeleteEvent } from '@/hooks/useEvents'
 import { useEventAttendees, useTagFriend, useRespondToTag } from '@/hooks/useAttendees'
 import { useEventMedia } from '@/hooks/useEventMedia'
 import { useEventSetlist } from '@/hooks/useEventSetlist'
+import { useEventNotes } from '@/hooks/useEventNotes'
 import { useFriends } from '@/hooks/useFriends'
 import { useAuthStore } from '@/stores/authStore'
 import { COUNTRIES } from '@/constants/countries'
@@ -232,6 +233,8 @@ function Body({ event, userId }: { event: EventFeedRow; userId: string }) {
   const rating = event.rating ?? 0
   const { data: media = [] } = useEventMedia(event.id)
   const { data: setlist } = useEventSetlist(event.id)
+  const isOwner = event.user_id === userId
+  const { data: notes } = useEventNotes(event.id, { enabled: isOwner })
 
   const fullDate = (() => {
     try { return format(parseISO(event.event_date), 'EEEE, d MMMM yyyy') } catch { return null }
@@ -315,6 +318,17 @@ function Body({ event, userId }: { event: EventFeedRow; userId: string }) {
         <View style={s.reviewBlock}>
           <Text style={s.reviewLabel}>review</Text>
           <Text style={s.reviewText}>{event.review_text}</Text>
+        </View>
+      )}
+
+      {/* Notes (private to the owner) */}
+      {isOwner && !!notes && (
+        <View style={s.reviewBlock}>
+          <View style={s.notesLabelRow}>
+            <Text style={s.reviewLabel}>notes</Text>
+            <Ionicons name="lock-closed-outline" size={10} color={C.muted} />
+          </View>
+          <Text style={s.reviewText}>{notes}</Text>
         </View>
       )}
 
@@ -909,6 +923,11 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: C.text,
     lineHeight: 20,
+  },
+  notesLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   // Attendees
   attendeesBlock: {

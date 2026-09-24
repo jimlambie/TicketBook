@@ -12,6 +12,7 @@ import { C, F } from '@/constants/design'
 interface CountryPickerProps {
   value: string
   onSelect: (country: Country) => void
+  onChangeText?: (text: string) => void
   focused: boolean
   onFocus: () => void
   onBlur: () => void
@@ -20,6 +21,7 @@ interface CountryPickerProps {
 export default function CountryPicker({
   value,
   onSelect,
+  onChangeText,
   focused,
   onFocus,
   onBlur,
@@ -40,6 +42,7 @@ export default function CountryPicker({
   function handleChangeText(text: string) {
     setQuery(text)
     setConfirmed(false)
+    onChangeText?.(text)
   }
 
   return (

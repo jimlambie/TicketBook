@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   View,
   Text,
@@ -9,13 +9,20 @@ import {
   StyleSheet,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
+import DateTimePicker from '@react-native-community/datetimepicker'
+import { parse, format } from 'date-fns'
+import CountryPicker from '@/components/CountryPicker'
+import { COUNTRIES } from '@/constants/countries'
 import { useEvent, useUpdateEvent, useUploadMedia } from '@/hooks/useEvents'
 import { useEventMedia } from '@/hooks/useEventMedia'
+import { useEventNotes, useSetEventNotes } from '@/hooks/useEventNotes'
 import { C, F } from '@/constants/design'
 import type { EventFeedRow, Visibility } from '@/lib/database.types'
 import type { Photo } from '@/lib/draft'
@@ -26,11 +33,24 @@ const VISIBILITY_OPTIONS: { value: Visibility; label: string; icon: keyof typeof
   { value: 'private', label: 'private', icon: 'lock-closed-outline' },
 ]
 
+function countryNameFor(code: string | null) {
+  if (!code) {
+    return ''
+  }
+  return COUNTRIES.find(c => c.code === code)?.name ?? code
+}
+
+function findCountry(text: string) {
+  const q = text.trim().toLowerCase()
+  return COUNTRIES.find(c => c.name.toLowerCase() === q || c.code.toLowerCase() === q)
+}
+
 export default function EditEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { data: event, isLoading } = useEvent(id)
+  const { data: initialNotes, isLoading: notesLoading, isError: notesError } = useEventNotes(id)
 
-  if (isLoading || !event) {
+  if (isLoading || notesLoading || !event) {
     return (
       <View style={s.centered}>
         <ActivityIndicator color={C.accent} />
@@ -38,19 +58,40 @@ export default function EditEventScreen() {
     )
   }
 
-  return <EditForm event={event} id={id} />
+  // If notes failed to load, hide the field rather than risk saving
+  // over them with an empty value.
+  return (
+    <EditForm
+      event={event}
+      id={id}
+      initialNotes={notesError ? null : (initialNotes ?? '')}
+    />
+  )
 }
 
-function EditForm({ event, id }: { event: EventFeedRow; id: string }) {
+function EditForm({ event, id, initialNotes }: {
+  event: EventFeedRow
+  id: string
+  initialNotes: string | null
+}) {
   const updateEvent = useUpdateEvent(id)
   const uploadMedia = useUploadMedia()
+  const setEventNotes = useSetEventNotes(id)
   const { data: existingMedia = [] } = useEventMedia(id)
 
+  const [date, setDate] = useState(event.event_date.slice(0, 10))
+  const [showAndroidPicker, setShowAndroidPicker] = useState(false)
+  const [city, setCity] = useState(event.city ?? event.venue_city ?? '')
+  const [country, setCountry] = useState(countryNameFor(event.country_code ?? event.venue_country_code))
+  const [focusedField, setFocusedField] = useState<string | null>(null)
+  const [notes, setNotes] = useState(initialNotes ?? '')
   const [rating, setRating] = useState(event.rating ?? 0)
   const [visibility, setVisibility] = useState<Visibility>(event.visibility as Visibility)
   const [reviewText, setReviewText] = useState(event.review_text ?? '')
   const [pendingPhotos, setPendingPhotos] = useState<Photo[]>([])
   const [isSaving, setIsSaving] = useState(false)
+
+  const dateObj = useMemo(() => parse(date, 'yyyy-MM-dd', new Date()), [date])
 
   const existingPhotos = existingMedia.filter(m => m.type === 'photo')
   const totalPhotos = existingPhotos.length + pendingPhotos.length
@@ -84,6 +125,12 @@ function EditForm({ event, id }: { event: EventFeedRow; id: string }) {
   }
 
   async function handleSave() {
+    const matchedCountry = findCountry(country)
+    if (country.trim() && !matchedCountry) {
+      Alert.alert('Unknown country', 'Pick a country from the list, or leave it blank.')
+      return
+    }
+
     setIsSaving(true)
     try {
       for (const photo of pendingPhotos) {
@@ -95,10 +142,16 @@ function EditForm({ event, id }: { event: EventFeedRow; id: string }) {
         })
       }
       await updateEvent.mutateAsync({
+        event_date: date,
+        city: city.trim() || null,
+        country_code: matchedCountry?.code ?? null,
         rating: rating > 0 ? rating : null,
         visibility,
         review_text: reviewText.trim() || null,
       })
+      if (initialNotes !== null && notes.trim() !== initialNotes) {
+        await setEventNotes.mutateAsync(notes.trim() || null)
+      }
       router.back()
     } catch {
       Alert.alert('Error', 'Could not save changes. Please try again.')
@@ -127,121 +180,220 @@ function EditForm({ event, id }: { event: EventFeedRow; id: string }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={s.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
 
-        {/* Rating */}
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>rating</Text>
-          <View style={s.stars}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <TouchableOpacity
-                key={i}
-                onPress={() => setRating(i + 1 === rating ? 0 : i + 1)}
-                activeOpacity={0.7}
-                hitSlop={4}
-              >
-                <Ionicons
-                  name={i < rating ? 'star' : 'star-outline'}
-                  size={28}
-                  color={i < rating ? C.accent : C.border2}
+          {/* Date */}
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>date</Text>
+            <View style={s.dateContainer}>
+              {Platform.OS === 'ios' ? (
+                <DateTimePicker
+                  value={dateObj}
+                  mode="date"
+                  display="compact"
+                  onChange={(_, d) => {
+                    if (d) {
+                      setDate(format(d, 'yyyy-MM-dd'))
+                    }
+                  }}
+                  themeVariant="dark"
+                  accentColor={C.accent}
                 />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={s.divider} />
-
-        {/* Visibility */}
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>visibility</Text>
-          <View style={s.visibilityRow}>
-            {VISIBILITY_OPTIONS.map(opt => {
-              const active = visibility === opt.value
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[s.visChip, active && s.visChipActive]}
-                  onPress={() => setVisibility(opt.value)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name={opt.icon} size={13} color={active ? C.bg : C.muted} />
-                  <Text style={[s.visChipText, active && s.visChipTextActive]}>{opt.label}</Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-        </View>
-
-        <View style={s.divider} />
-
-        {/* Photos */}
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>
-            photos{totalPhotos > 0 ? ` (${totalPhotos}/10)` : ''}
-          </Text>
-
-          {(existingPhotos.length > 0 || pendingPhotos.length > 0) && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={s.photoScroll}
-              contentContainerStyle={s.photoScrollContent}
-            >
-              {existingPhotos.map(photo => (
-                <Image
-                  key={photo.id}
-                  source={{ uri: photo.publicUrl }}
-                  style={s.photoThumb}
-                  resizeMode="cover"
-                />
-              ))}
-              {pendingPhotos.map((photo, i) => (
-                <View key={photo.uri} style={s.pendingThumbWrap}>
-                  <Image source={{ uri: photo.uri }} style={s.photoThumb} resizeMode="cover" />
+              ) : (
+                <>
                   <TouchableOpacity
-                    style={s.thumbRemove}
-                    onPress={() => removePending(i)}
-                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                    style={s.dateTrigger}
+                    onPress={() => setShowAndroidPicker(true)}
+                    activeOpacity={0.8}
                   >
-                    <Ionicons name="close-circle" size={18} color={C.red} />
+                    <Text style={s.dateText}>{format(dateObj, 'd MMM yyyy')}</Text>
+                    <Ionicons name="calendar-outline" size={16} color={C.muted} />
                   </TouchableOpacity>
-                  <View style={s.pendingBadge}>
-                    <Ionicons name="cloud-upload-outline" size={10} color={C.bg} />
-                  </View>
-                </View>
+                  {showAndroidPicker && (
+                    <DateTimePicker
+                      value={dateObj}
+                      mode="date"
+                      display="default"
+                      onChange={(_, d) => {
+                        setShowAndroidPicker(false)
+                        if (d) {
+                          setDate(format(d, 'yyyy-MM-dd'))
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </View>
+          </View>
+
+          <View style={s.divider} />
+
+          {/* Location */}
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>city</Text>
+            <TextInput
+              style={[s.input, focusedField === 'city' && s.inputFocused]}
+              value={city}
+              onChangeText={setCity}
+              onFocus={() => setFocusedField('city')}
+              onBlur={() => setFocusedField(null)}
+              placeholder="e.g. Auckland"
+              placeholderTextColor={C.muted}
+              autoCapitalize="words"
+            />
+            <Text style={s.sectionLabel}>country</Text>
+            <CountryPicker
+              value={country}
+              onSelect={({ name }) => setCountry(name)}
+              onChangeText={setCountry}
+              focused={focusedField === 'country'}
+              onFocus={() => setFocusedField('country')}
+              onBlur={() => setFocusedField(null)}
+            />
+          </View>
+
+          <View style={s.divider} />
+
+          {/* Rating */}
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>rating</Text>
+            <View style={s.stars}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => setRating(i + 1 === rating ? 0 : i + 1)}
+                  activeOpacity={0.7}
+                  hitSlop={4}
+                >
+                  <Ionicons
+                    name={i < rating ? 'star' : 'star-outline'}
+                    size={28}
+                    color={i < rating ? C.accent : C.border2}
+                  />
+                </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
+          </View>
+
+          <View style={s.divider} />
+
+          {/* Visibility */}
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>visibility</Text>
+            <View style={s.visibilityRow}>
+              {VISIBILITY_OPTIONS.map(opt => {
+                const active = visibility === opt.value
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[s.visChip, active && s.visChipActive]}
+                    onPress={() => setVisibility(opt.value)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name={opt.icon} size={13} color={active ? C.bg : C.muted} />
+                    <Text style={[s.visChipText, active && s.visChipTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+
+          <View style={s.divider} />
+
+          {/* Photos */}
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>
+              photos{totalPhotos > 0 ? ` (${totalPhotos}/10)` : ''}
+            </Text>
+
+            {(existingPhotos.length > 0 || pendingPhotos.length > 0) && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={s.photoScroll}
+                contentContainerStyle={s.photoScrollContent}
+              >
+                {existingPhotos.map(photo => (
+                  <Image
+                    key={photo.id}
+                    source={{ uri: photo.publicUrl }}
+                    style={s.photoThumb}
+                    resizeMode="cover"
+                  />
+                ))}
+                {pendingPhotos.map((photo, i) => (
+                  <View key={photo.uri} style={s.pendingThumbWrap}>
+                    <Image source={{ uri: photo.uri }} style={s.photoThumb} resizeMode="cover" />
+                    <TouchableOpacity
+                      style={s.thumbRemove}
+                      onPress={() => removePending(i)}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                    >
+                      <Ionicons name="close-circle" size={18} color={C.red} />
+                    </TouchableOpacity>
+                    <View style={s.pendingBadge}>
+                      <Ionicons name="cloud-upload-outline" size={10} color={C.bg} />
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            {totalPhotos < 10 && (
+              <TouchableOpacity style={s.addBtn} onPress={pickPhotos} activeOpacity={0.8}>
+                <Ionicons name="images-outline" size={20} color={C.muted} />
+                <Text style={s.addBtnText}>
+                  {totalPhotos === 0 ? 'add photos' : 'add more'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={s.divider} />
+
+          {/* Review */}
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>review</Text>
+            <TextInput
+              style={s.reviewInput}
+              value={reviewText}
+              onChangeText={setReviewText}
+              placeholder="your thoughts on the event..."
+              placeholderTextColor={C.muted}
+              multiline
+              numberOfLines={5}
+              textAlignVertical="top"
+            />
+          </View>
+
+          {initialNotes !== null && (
+            <>
+              <View style={s.divider} />
+
+              {/* Notes (private to the owner) */}
+              <View style={s.section}>
+                <View style={s.notesLabelRow}>
+                  <Text style={s.sectionLabel}>notes</Text>
+                  <Ionicons name="lock-closed-outline" size={10} color={C.muted} />
+                </View>
+                <TextInput
+                  style={s.reviewInput}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="only you can see these..."
+                  placeholderTextColor={C.muted}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </>
           )}
 
-          {totalPhotos < 10 && (
-            <TouchableOpacity style={s.addBtn} onPress={pickPhotos} activeOpacity={0.8}>
-              <Ionicons name="images-outline" size={20} color={C.muted} />
-              <Text style={s.addBtnText}>
-                {totalPhotos === 0 ? 'add photos' : 'add more'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={s.divider} />
-
-        {/* Review */}
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>review</Text>
-          <TextInput
-            style={s.reviewInput}
-            value={reviewText}
-            onChangeText={setReviewText}
-            placeholder="your thoughts on the event..."
-            placeholderTextColor={C.muted}
-            multiline
-            numberOfLines={5}
-            textAlignVertical="top"
-          />
-        </View>
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
@@ -307,6 +459,45 @@ const s = StyleSheet.create({
     height: 0.5,
     backgroundColor: C.border2,
     marginHorizontal: 20,
+  },
+  input: {
+    backgroundColor: C.surface2,
+    borderWidth: 0.5,
+    borderColor: C.border2,
+    borderRadius: 8,
+    height: 48,
+    paddingHorizontal: 14,
+    fontFamily: F.mono,
+    fontSize: 14,
+    color: C.text,
+  },
+  inputFocused: {
+    borderColor: C.accent,
+  },
+  dateContainer: {
+    backgroundColor: C.surface2,
+    borderWidth: 0.5,
+    borderColor: C.border2,
+    borderRadius: 8,
+    height: 48,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+  },
+  dateTrigger: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateText: {
+    fontFamily: F.mono,
+    fontSize: 14,
+    color: C.text,
+  },
+  notesLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   stars: {
     flexDirection: 'row',

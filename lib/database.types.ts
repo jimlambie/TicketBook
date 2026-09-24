@@ -172,7 +172,6 @@ export interface Database {
           visibility: Visibility
           rating: number | null
           review_text: string | null
-          notes: string | null
           stub_number: number | null
           deleted_at: string | null
           created_at: string
@@ -193,7 +192,6 @@ export interface Database {
           visibility: Visibility
           rating?: number | null
           review_text?: string | null
-          notes?: string | null
           stub_number?: number | null
           deleted_at?: string | null
           created_at?: string
@@ -342,6 +340,24 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['setlists']['Insert']>
         Relationships: []
       }
+      event_notes: {
+        Row: {
+          event_id: string
+          user_id: string
+          notes: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          event_id: string
+          user_id: string
+          notes: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['event_notes']['Insert']>
+        Relationships: []
+      }
     }
     Views: {
       accepted_friends: {
@@ -410,6 +426,14 @@ export interface Database {
       get_year_in_review: {
         Args: { p_year?: number | null }
         Returns: YearInReview
+      }
+      get_event_notes: {
+        Args: { p_event_id: string }
+        Returns: string | null
+      }
+      set_event_notes: {
+        Args: { p_event_id: string; p_notes: string | null }
+        Returns: void
       }
     }
     Enums: {
