@@ -20,7 +20,9 @@ const googleIosUrlScheme = GOOGLE_IOS_CLIENT_ID
   : null
 
 if (!googleIosUrlScheme) {
-  console.warn('EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is not set: Google sign-in will not work on iOS')
+  console.warn(
+    'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is not set: Google sign-in will not work on iOS'
+  )
 }
 
 const getAppName = () => {
@@ -55,11 +57,13 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: false,
     usesAppleSignIn: true,
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSCameraUsageDescription:
         'Used to scan and upload ticket photos and event images.',
       NSPhotoLibraryUsageDescription:
         'Used to upload photos and tickets from your library.',
-      NSContactsUsageDescription: 'Used to find friends already on TicketBook.io.'
+      NSContactsUsageDescription:
+        'Used to find friends already on TicketBook.io.'
     }
   },
   android: {
@@ -69,7 +73,8 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: '#0f0e0c'
     },
     softwareKeyboardLayoutMode: 'pan',
-    googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
+    googleServicesFile:
+      process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
     permissions: [
       'CAMERA',
       'READ_MEDIA_IMAGES',
@@ -108,7 +113,12 @@ const config = ({ config }: ConfigContext): ExpoConfig => ({
     'expo-localization',
     'expo-apple-authentication',
     ...(googleIosUrlScheme
-      ? [['@react-native-google-signin/google-signin', { iosUrlScheme: googleIosUrlScheme }] as [string, object]]
+      ? [
+          [
+            '@react-native-google-signin/google-signin',
+            { iosUrlScheme: googleIosUrlScheme }
+          ] as [string, object]
+        ]
       : []),
     [
       '@sentry/react-native/expo',
