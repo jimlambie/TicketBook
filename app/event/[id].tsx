@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Alert, Dimensions, Image, Modal, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { format, parseISO } from 'date-fns'
@@ -622,6 +622,10 @@ function AttendeesSection({
 // ─── Lightbox ─────────────────────────────────────────────
 
 function LightboxModal({ uri, onClose }: { uri: string | null; onClose: () => void }) {
+  // Read insets from the screen's provider rather than a SafeAreaView inside
+  // the Modal: in a Modal those often measure 0 on iOS, which put the close
+  // button under the status bar / Dynamic Island where taps were missed.
+  const insets = useSafeAreaInsets()
   return (
     <Modal
       visible={!!uri}
@@ -647,11 +651,16 @@ function LightboxModal({ uri, onClose }: { uri: string | null; onClose: () => vo
             resizeMode="contain"
           />
         </ScrollView>
-        <SafeAreaView style={ls.closeArea} edges={['top']} pointerEvents="box-none">
-          <TouchableOpacity style={ls.closeBtn} onPress={onClose} hitSlop={12} activeOpacity={0.7}>
-            <Ionicons name="close" size={22} color="#fff" />
-          </TouchableOpacity>
-        </SafeAreaView>
+        <TouchableOpacity
+          style={[ls.closeBtn, { top: insets.top + 12 }]}
+          onPress={onClose}
+          hitSlop={16}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Close image"
+        >
+          <Ionicons name="close" size={24} color="#fff" />
+        </TouchableOpacity>
       </View>
     </Modal>
   )
@@ -671,16 +680,17 @@ const ls = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeArea: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-  },
   closeBtn: {
-    margin: 16,
-    padding: 6,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    position: 'absolute',
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 1,
+    elevation: 1,
   },
 })
 
