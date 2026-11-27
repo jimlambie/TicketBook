@@ -5,7 +5,7 @@ import { useLocalSearchParams, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { format, parseISO } from 'date-fns'
 import { useEvent, useDeleteEvent } from '@/hooks/useEvents'
-import { useEventAttendees, useTagFriend, useRespondToTag } from '@/hooks/useAttendees'
+import { useEventAttendees, useTagFriends, useRespondToTag } from '@/hooks/useAttendees'
 import { useEventMedia } from '@/hooks/useEventMedia'
 import { useEventSetlist } from '@/hooks/useEventSetlist'
 import { useEventNotes } from '@/hooks/useEventNotes'
@@ -509,13 +509,17 @@ function AttendeesSection({
   userId: string
 }) {
   const [tagModalOpen, setTagModalOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [tagError, setTagError] = useState<string | null>(null)
   const { data: attendees = [] } = useEventAttendees(eventId)
   const { data: friends = [] } = useFriends()
-  const tagFriend = useTagFriend()
+  const tagFriends = useTagFriends()
   const respondToTag = useRespondToTag()
 
   const isOwner = eventUserId === userId
   const confirmed = attendees.filter(a => a.status === 'confirmed')
+  // Only the owner sees who hasn't confirmed yet.
+  const pending = isOwner ? attendees.filter(a => a.status === 'pending') : []
   const myPending = attendees.find(
     a => a.tagged_user_id === userId && a.status === 'pending'
   )
@@ -526,6 +530,40 @@ function AttendeesSection({
   if (!isOwner && !myPending && confirmed.length === 0) {
     return null
   }
+
+  function openTagSheet() {
+    setSelectedIds(new Set())
+    setTagError(null)
+    setTagModalOpen(true)
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  async function submitTags() {
+    setTagError(null)
+    try {
+      await tagFriends.mutateAsync({
+        eventId,
+        taggedUserIds: [...selectedIds],
+        taggedByUserId: userId,
+      })
+      setTagModalOpen(false)
+    } catch (e: any) {
+      setTagError(e?.message ?? 'Couldn’t tag friends. Try again.')
+    }
+  }
+
+  const selectedCount = selectedIds.size
 
   return (
     <View style={s.attendeesBlock}>
@@ -566,18 +604,33 @@ function AttendeesSection({
         </View>
       ))}
 
+      {pending.map(a => (
+        <View key={a.id} style={s.attendeeRow}>
+          <Ionicons name="time-outline" size={14} color={C.muted} />
+          <Text style={[s.attendeeUsername, s.attendeeUsernamePending]}>
+            @{a.tagged_user?.username ?? '?'}
+          </Text>
+          <Text style={s.attendeeStatus}>waiting to confirm</Text>
+        </View>
+      ))}
+
       {isOwner && taggableFriends.length > 0 && (
         <TouchableOpacity
           style={s.tagFriendBtn}
-          onPress={() => setTagModalOpen(true)}
+          onPress={openTagSheet}
           activeOpacity={0.7}
         >
           <Ionicons name="person-add-outline" size={13} color={C.accent} />
-          <Text style={s.tagFriendBtnText}>tag a friend</Text>
+          <Text style={s.tagFriendBtnText}>tag friends</Text>
         </TouchableOpacity>
       )}
 
-      <Modal visible={tagModalOpen} transparent animationType="slide">
+      <Modal
+        visible={tagModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTagModalOpen(false)}
+      >
         <View style={s.tagModalOverlay}>
           <TouchableOpacity
             style={s.tagModalDismiss}
@@ -585,33 +638,57 @@ function AttendeesSection({
           />
           <SafeAreaView style={s.tagSheet} edges={['bottom']}>
             <View style={s.tagSheetHeader}>
-              <Text style={s.tagSheetTitle}>Tag a friend</Text>
+              <Text style={s.tagSheetTitle}>Tag friends</Text>
               <TouchableOpacity onPress={() => setTagModalOpen(false)} hitSlop={8}>
                 <Ionicons name="close" size={20} color={C.muted} />
               </TouchableOpacity>
             </View>
-            {taggableFriends.map((friend, i) => (
-              <View key={friend.id}>
-                {i > 0 && <View style={s.tagSheetDivider} />}
-                <TouchableOpacity
-                  style={s.tagSheetRow}
-                  onPress={async () => {
-                    await tagFriend.mutateAsync({
-                      eventId,
-                      taggedUserId: friend.id,
-                      taggedByUserId: userId,
-                    })
-                    setTagModalOpen(false)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.tagSheetUsername}>@{friend.username}</Text>
-                  {!!friend.display_name && (
-                    <Text style={s.tagSheetDisplayName}>{friend.display_name}</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ))}
+            <ScrollView style={s.tagSheetList} keyboardShouldPersistTaps="handled">
+              {taggableFriends.map((friend, i) => {
+                const isSelected = selectedIds.has(friend.id)
+                return (
+                  <View key={friend.id}>
+                    {i > 0 && <View style={s.tagSheetDivider} />}
+                    <TouchableOpacity
+                      style={s.tagSheetRow}
+                      onPress={() => toggleSelected(friend.id)}
+                      activeOpacity={0.7}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: isSelected }}
+                    >
+                      <View style={s.tagSheetRowText}>
+                        <Text style={s.tagSheetUsername}>@{friend.username}</Text>
+                        {!!friend.display_name && (
+                          <Text style={s.tagSheetDisplayName}>{friend.display_name}</Text>
+                        )}
+                      </View>
+                      <Ionicons
+                        name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={22}
+                        color={isSelected ? C.accent : C.border2}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )
+              })}
+            </ScrollView>
+            {!!tagError && <Text style={s.tagSheetError}>{tagError}</Text>}
+            <TouchableOpacity
+              style={[s.tagSheetSubmit, (selectedCount === 0 || tagFriends.isPending) && s.tagSheetSubmitDisabled]}
+              onPress={submitTags}
+              disabled={selectedCount === 0 || tagFriends.isPending}
+              activeOpacity={0.8}
+            >
+              {tagFriends.isPending ? (
+                <ActivityIndicator color={C.bg} size="small" />
+              ) : (
+                <Text style={s.tagSheetSubmitText}>
+                  {selectedCount === 0
+                    ? 'Select friends'
+                    : `Tag ${selectedCount} ${selectedCount === 1 ? 'friend' : 'friends'}`}
+                </Text>
+              )}
+            </TouchableOpacity>
           </SafeAreaView>
         </View>
       </Modal>
@@ -961,6 +1038,14 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: C.text,
   },
+  attendeeUsernamePending: {
+    color: C.muted,
+  },
+  attendeeStatus: {
+    fontFamily: F.mono,
+    fontSize: 10,
+    color: C.muted,
+  },
   tagFriendBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1042,9 +1127,40 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: C.text,
   },
+  tagSheetList: {
+    maxHeight: 360,
+  },
   tagSheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 14,
+    gap: 12,
+  },
+  tagSheetRowText: {
+    flex: 1,
     gap: 2,
+  },
+  tagSheetError: {
+    fontFamily: F.mono,
+    fontSize: 11,
+    color: C.red,
+    marginTop: 8,
+  },
+  tagSheetSubmit: {
+    marginTop: 12,
+    height: 44,
+    borderRadius: C.radius,
+    backgroundColor: C.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tagSheetSubmitDisabled: {
+    opacity: 0.4,
+  },
+  tagSheetSubmitText: {
+    fontFamily: F.monoMedium,
+    fontSize: 13,
+    color: C.bg,
   },
   tagSheetUsername: {
     fontFamily: F.monoMedium,
