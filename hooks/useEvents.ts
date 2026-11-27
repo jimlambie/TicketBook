@@ -27,10 +27,47 @@ export const eventKeys = {
   all: ['events'] as const,
   feed: (userId: string) => [...eventKeys.all, 'feed', userId] as const,
   detail: (id: string) => [...eventKeys.all, 'detail', id] as const,
-  friendsFeed: (userId: string) =>
-    [...eventKeys.all, 'friends-feed', userId] as const,
-  search: (userId: string, query: string, type: string) =>
-    [...eventKeys.all, 'search', userId, query, type] as const
+  friendsFeed: (userId: string, friendId?: string | null) =>
+    [...eventKeys.all, 'friends-feed', userId, friendId ?? 'all'] as const,
+  search: (
+    userId: string,
+    scope: SearchScope,
+    friendId: string | null,
+    query: string,
+    type: string
+  ) =>
+    [
+      ...eventKeys.all,
+      'search',
+      userId,
+      scope,
+      friendId ?? 'all',
+      query,
+      type
+    ] as const
+}
+
+const FEED_SELECT =
+  '*, sport_details(home_team,away_team,home_score,away_score,competition,season,lineups)'
+
+export type SearchScope = 'mine' | 'friends'
+
+// Quote a value for use inside a PostgREST `or=(...)` filter so commas,
+// parentheses and dots in user input aren't parsed as filter syntax.
+function quoteFilterValue(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+async function fetchFriendIds(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('accepted_friends')
+    .select('friend_id')
+    .eq('user_id', userId)
+
+  if (error) {
+    throw error
+  }
+  return (data ?? []).map(f => f.friend_id)
 }
 
 // ============================================================
@@ -70,29 +107,56 @@ export function useMyFeed() {
 }
 
 // ============================================================
-// SEARCH YOUR EVENTS
+// SEARCH EVENTS (yours, all friends', or one friend's)
 // ============================================================
 
-export function useSearchMyEvents(query: string, type: string) {
+interface SearchEventsParams {
+  scope: SearchScope
+  friendId?: string | null
+  query: string
+  type: string
+}
+
+export function useSearchEvents({
+  scope,
+  friendId = null,
+  query,
+  type
+}: SearchEventsParams) {
   const { supabaseUser } = useAuthStore()
-  const active = query.trim().length > 0 || (type !== 'all' && type !== '')
+  const trimmed = query.trim()
+  const active = trimmed.length > 0 || (type !== 'all' && type !== '')
 
   return useQuery({
-    queryKey: eventKeys.search(supabaseUser?.id ?? '', query, type),
+    queryKey: eventKeys.search(
+      supabaseUser?.id ?? '',
+      scope,
+      friendId,
+      trimmed,
+      type
+    ),
     queryFn: async () => {
       let q = supabase
         .from('events_feed')
-        .select(
-          '*, sport_details(home_team,away_team,home_score,away_score,competition,season,lineups)'
-        )
-        .eq('user_id', supabaseUser!.id)
+        .select(FEED_SELECT)
         .is('deleted_at', null)
         .order('event_date', { ascending: false })
         .limit(100)
 
-      if (query.trim()) {
+      if (scope === 'mine') {
+        q = q.eq('user_id', supabaseUser!.id)
+      } else {
+        const ids = friendId ? [friendId] : await fetchFriendIds(supabaseUser!.id)
+        if (ids.length === 0) {
+          return [] as EventFeedRow[]
+        }
+        q = q.in('user_id', ids).in('visibility', ['public', 'friends'])
+      }
+
+      if (trimmed) {
+        const pattern = quoteFilterValue(`%${trimmed}%`)
         q = q.or(
-          `artist_name.ilike.%${query.trim()}%,venue_name.ilike.%${query.trim()}%,city.ilike.%${query.trim()}%`
+          `artist_name.ilike.${pattern},venue_name.ilike.${pattern},city.ilike.${pattern}`
         )
       }
 
@@ -112,32 +176,24 @@ export function useSearchMyEvents(query: string, type: string) {
 }
 
 // ============================================================
-// FETCH FRIENDS FEED
+// FETCH FRIENDS FEED (all friends, or one friend)
 // ============================================================
 
-export function useFriendsFeed() {
+export function useFriendsFeed(friendId: string | null = null) {
   const { supabaseUser } = useAuthStore()
 
   return useInfiniteQuery({
-    queryKey: eventKeys.friendsFeed(supabaseUser?.id ?? ''),
+    queryKey: eventKeys.friendsFeed(supabaseUser?.id ?? '', friendId),
     queryFn: async ({ pageParam = 0 }) => {
-      // Get friend IDs first
-      const { data: friends } = await supabase
-        .from('accepted_friends')
-        .select('friend_id')
-        .eq('user_id', supabaseUser!.id)
-
-      const friendIds = friends?.map(f => f.friend_id) ?? []
-      if (friendIds.length === 0) {
-        return []
+      const ids = friendId ? [friendId] : await fetchFriendIds(supabaseUser!.id)
+      if (ids.length === 0) {
+        return [] as EventFeedRow[]
       }
 
       const { data, error } = await supabase
         .from('events_feed')
-        .select(
-          '*, sport_details(home_team,away_team,home_score,away_score,competition,season,lineups)'
-        )
-        .in('user_id', friendIds)
+        .select(FEED_SELECT)
+        .in('user_id', ids)
         .in('visibility', ['public', 'friends'])
         .is('deleted_at', null)
         .order('event_date', { ascending: false })

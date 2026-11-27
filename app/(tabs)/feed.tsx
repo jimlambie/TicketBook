@@ -8,16 +8,19 @@ import {
   ActivityIndicator,
   StyleSheet,
   RefreshControl,
+  ScrollView,
+  Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { FlashList } from '@shopify/flash-list'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
-import { useMyFeed, useFriendsFeed, useSearchMyEvents } from '@/hooks/useEvents'
+import { useMyFeed, useFriendsFeed, useSearchEvents } from '@/hooks/useEvents'
 import { useFriends } from '@/hooks/useFriends'
 import EventCard from '@/components/EventCard'
 import SportCard from '@/components/SportCard'
 import type { CardOwner } from '@/components/OwnerBadge'
+import { avatarColor } from '@/components/UserCard'
 import type { EventFeedRow } from '@/lib/database.types'
 import { C, F, eventTypeStyle } from '@/constants/design'
 
@@ -32,40 +35,94 @@ const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
   { key: 'other', label: 'other' },
 ]
 
+type FeedItem =
+  | { kind: 'year'; key: string; year: string }
+  | { kind: 'event'; key: string; event: EventFeedRow }
+
+interface FriendOption extends CardOwner {
+  id: string
+}
+
+// Interleave a year header before the first event of each year.
+// Events arrive sorted by event_date descending, so a single pass works.
+function groupByYear(events: EventFeedRow[]): { items: FeedItem[]; stickyIndices: number[] } {
+  const items: FeedItem[] = []
+  const stickyIndices: number[] = []
+  let currentYear: string | null = null
+
+  for (const event of events) {
+    const year = event.event_date.slice(0, 4)
+    if (year !== currentYear) {
+      currentYear = year
+      stickyIndices.push(items.length)
+      items.push({ kind: 'year', key: `year-${year}`, year })
+    }
+    items.push({ kind: 'event', key: event.id, event })
+  }
+
+  return { items, stickyIndices }
+}
+
 export default function FeedScreen() {
   const [activeTab, setActiveTab] = useState<FeedTab>('mine')
   const [searchActive, setSearchActive] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null)
   const inputRef = useRef<TextInput>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Set when opening an event so returning from it keeps the current tab
+  // instead of snapping back to "mine".
+  const returningFromEventRef = useRef(false)
 
   useFocusEffect(useCallback(() => {
+    if (returningFromEventRef.current) {
+      returningFromEventRef.current = false
+      return
+    }
     setActiveTab('mine')
   }, []))
 
-  const myFeed = useMyFeed()
-  const friendsFeed = useFriendsFeed()
-  const searchResults = useSearchMyEvents(searchQuery, typeFilter)
   const { data: friends = [] } = useFriends()
+
+  const friendOptions = useMemo<FriendOption[]>(() => {
+    return friends
+      .map(f => ({ id: f.id, username: f.username, display_name: f.display_name, avatar_url: f.avatar_url }))
+      .sort((a, b) => a.username.localeCompare(b.username))
+  }, [friends])
 
   const friendProfileMap = useMemo(() => {
     const m = new Map<string, CardOwner>()
-    for (const f of friends) {
-      m.set(f.id, { username: f.username, display_name: f.display_name, avatar_url: f.avatar_url })
+    for (const f of friendOptions) {
+      m.set(f.id, f)
     }
     return m
-  }, [friends])
+  }, [friendOptions])
 
-  const isSearchMode = searchActive && activeTab === 'mine'
-  const showSearchResults = isSearchMode && (searchQuery.trim().length > 0 || typeFilter !== 'all')
+  // Drop the selection if that person is no longer a friend.
+  const friendId = selectedFriendId && friendProfileMap.has(selectedFriendId)
+    ? selectedFriendId
+    : null
+
+  const myFeed = useMyFeed()
+  const friendsFeed = useFriendsFeed(friendId)
+  const searchResults = useSearchEvents({
+    scope: activeTab,
+    friendId: activeTab === 'friends' ? friendId : null,
+    query: searchQuery,
+    type: typeFilter,
+  })
+
+  const showSearchResults = searchActive && (searchQuery.trim().length > 0 || typeFilter !== 'all')
 
   const active = activeTab === 'mine' ? myFeed : friendsFeed
-  const feedEvents: EventFeedRow[] = active.data?.pages.flatMap(page => page) ?? []
-  const displayEvents: EventFeedRow[] = showSearchResults
-    ? (searchResults.data ?? [])
-    : feedEvents
+  const { items: listItems, stickyIndices } = useMemo(() => {
+    const events: EventFeedRow[] = showSearchResults
+      ? (searchResults.data ?? [])
+      : (active.data?.pages.flatMap(page => page) ?? [])
+    return groupByYear(events)
+  }, [showSearchResults, searchResults.data, active.data])
 
   const isRefreshing = !showSearchResults && active.isRefetching && !active.isFetchingNextPage
 
@@ -106,18 +163,31 @@ export default function FeedScreen() {
     }
   }, [active, showSearchResults])
 
-  const renderItem = useCallback(({ item }: { item: EventFeedRow }) => {
-    const onPress = () => router.push(`/event/${item.id}`)
-    const owner = activeTab === 'friends' ? friendProfileMap.get(item.user_id) : undefined
+  const renderItem = useCallback(({ item }: { item: FeedItem }) => {
+    if (item.kind === 'year') {
+      return (
+        <View style={s.yearHeader}>
+          <Text style={s.yearText}>{item.year}</Text>
+        </View>
+      )
+    }
+    const event = item.event
+    const onPress = () => {
+      returningFromEventRef.current = true
+      router.push(`/event/${event.id}`)
+    }
+    const owner = activeTab === 'friends' ? friendProfileMap.get(event.user_id) : undefined
     return (
       <View style={s.item}>
-        {item.type === 'sport'
-          ? <SportCard event={item} onPress={onPress} owner={owner} />
-          : <EventCard event={item} onPress={onPress} owner={owner} />
+        {event.type === 'sport'
+          ? <SportCard event={event} onPress={onPress} owner={owner} />
+          : <EventCard event={event} onPress={onPress} owner={owner} />
         }
       </View>
     )
   }, [activeTab, friendProfileMap])
+
+  const selectedFriend = friendId ? friendProfileMap.get(friendId) : undefined
 
   if (!searchActive && active.isLoading) {
     return (
@@ -185,8 +255,49 @@ export default function FeedScreen() {
       </View>
       <View style={s.segmentDivider} />
 
-      {/* Type filter — mine tab + search active */}
-      {isSearchMode && (
+      {/* Friend filter — friends tab */}
+      {activeTab === 'friends' && friendOptions.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.friendScroll}
+          contentContainerStyle={s.friendRow}
+          keyboardShouldPersistTaps="handled"
+        >
+          <TouchableOpacity
+            style={[s.filterChip, s.friendChip, !friendId && s.filterChipActive]}
+            onPress={() => setSelectedFriendId(null)}
+            activeOpacity={0.7}
+          >
+            <Text style={[s.filterChipText, !friendId && s.filterChipTextActive]}>everyone</Text>
+          </TouchableOpacity>
+          {friendOptions.map(f => {
+            const isActive = friendId === f.id
+            return (
+              <TouchableOpacity
+                key={f.id}
+                style={[s.filterChip, s.friendChip, isActive && s.filterChipActive]}
+                onPress={() => setSelectedFriendId(isActive ? null : f.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[s.friendAvatar, { backgroundColor: avatarColor(f.username) }]}>
+                  {f.avatar_url ? (
+                    <Image source={{ uri: f.avatar_url }} style={s.friendAvatarImage} resizeMode="cover" />
+                  ) : (
+                    <Text style={s.friendAvatarText}>{f.username.slice(0, 1).toUpperCase()}</Text>
+                  )}
+                </View>
+                <Text style={[s.filterChipText, isActive && s.filterChipTextActive]}>
+                  @{f.username}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      )}
+
+      {/* Type filter — while searching */}
+      {searchActive && (
         <View style={s.filterRow}>
           {TYPE_FILTERS.map(f => {
             const isActive = typeFilter === f.key
@@ -223,9 +334,11 @@ export default function FeedScreen() {
       )}
 
       <FlashList
-        data={displayEvents}
+        data={listItems}
         renderItem={renderItem}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.key}
+        getItemType={item => item.kind}
+        stickyHeaderIndices={stickyIndices}
         contentContainerStyle={s.listContent}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -245,6 +358,7 @@ export default function FeedScreen() {
                 tab={activeTab}
                 isSearch={showSearchResults}
                 query={searchQuery}
+                friendUsername={selectedFriend?.username}
               />
             : null
         }
@@ -262,10 +376,12 @@ function EmptyState({
   tab,
   isSearch,
   query,
+  friendUsername,
 }: {
   tab: FeedTab
   isSearch: boolean
   query: string
+  friendUsername?: string
 }) {
   if (isSearch) {
     return (
@@ -285,7 +401,9 @@ function EmptyState({
       <Text style={s.emptySubtitle}>
         {tab === 'mine'
           ? 'tap + to log your first event'
-          : "your friends haven't added any events"}
+          : friendUsername
+            ? `@${friendUsername} hasn't shared any events`
+            : "your friends haven't added any events"}
       </Text>
     </View>
   )
@@ -419,6 +537,50 @@ const s = StyleSheet.create({
     letterSpacing: 0.2,
   },
   filterChipTextActive: {
+    color: C.text,
+  },
+  // Friend filter
+  friendScroll: {
+    flexGrow: 0,
+  },
+  friendRow: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    gap: 6,
+  },
+  friendChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  friendAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendAvatarImage: {
+    width: 16,
+    height: 16,
+  },
+  friendAvatarText: {
+    fontFamily: F.monoMedium,
+    fontSize: 8,
+    color: C.text,
+  },
+  // Year headers
+  yearHeader: {
+    backgroundColor: C.bg,
+    paddingTop: 6,
+    paddingBottom: 8,
+    paddingHorizontal: 2,
+  },
+  yearText: {
+    fontFamily: F.display,
+    fontSize: 15,
+    letterSpacing: -0.2,
     color: C.text,
   },
   // Search loading
