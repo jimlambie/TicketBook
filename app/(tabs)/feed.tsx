@@ -22,6 +22,7 @@ import SportCard from '@/components/SportCard'
 import type { CardOwner } from '@/components/OwnerBadge'
 import { avatarColor } from '@/components/UserCard'
 import type { EventFeedRow } from '@/lib/database.types'
+import { groupByYear, type FeedItem } from '@/lib/feedGrouping'
 import { C, F, eventTypeStyle } from '@/constants/design'
 
 type FeedTab = 'mine' | 'friends'
@@ -35,32 +36,8 @@ const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
   { key: 'other', label: 'other' },
 ]
 
-type FeedItem =
-  | { kind: 'year'; key: string; year: string }
-  | { kind: 'event'; key: string; event: EventFeedRow }
-
 interface FriendOption extends CardOwner {
   id: string
-}
-
-// Interleave a year header before the first event of each year.
-// Events arrive sorted by event_date descending, so a single pass works.
-function groupByYear(events: EventFeedRow[]): { items: FeedItem[]; stickyIndices: number[] } {
-  const items: FeedItem[] = []
-  const stickyIndices: number[] = []
-  let currentYear: string | null = null
-
-  for (const event of events) {
-    const year = event.event_date.slice(0, 4)
-    if (year !== currentYear) {
-      currentYear = year
-      stickyIndices.push(items.length)
-      items.push({ kind: 'year', key: `year-${year}`, year })
-    }
-    items.push({ kind: 'event', key: event.id, event })
-  }
-
-  return { items, stickyIndices }
 }
 
 export default function FeedScreen() {
