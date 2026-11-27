@@ -1,11 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication'
 import * as Crypto from 'expo-crypto'
-import {
-  GoogleSignin,
-  isErrorWithCode,
-  isSuccessResponse,
-  statusCodes,
-} from '@react-native-google-signin/google-signin'
+
+type GoogleSigninModule = typeof import('@react-native-google-signin/google-signin')
 
 // Native sign-in flows. Each returns the provider's ID token for
 // supabase.auth.signInWithIdToken, or null if the user cancelled.
@@ -13,24 +9,45 @@ import {
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
 
+let googleModule: GoogleSigninModule | null = null
 let googleConfigured = false
 
-function ensureGoogleConfigured() {
+// The native module is loaded on first use rather than at import time.
+// Binaries built without it (Expo Go, or dev builds that predate Google
+// sign-in) throw when it loads, which would otherwise crash the whole
+// app through authStore's import chain.
+function loadGoogleSignin(): GoogleSigninModule {
+  if (googleModule) {
+    return googleModule
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    googleModule = require('@react-native-google-signin/google-signin') as GoogleSigninModule
+  } catch {
+    throw new Error('Google sign-in isn’t available in this build')
+  }
+  return googleModule
+}
+
+function ensureGoogleConfigured(): GoogleSigninModule {
   if (!GOOGLE_WEB_CLIENT_ID) {
     throw new Error('Google sign-in is not configured')
   }
+  const google = loadGoogleSignin()
   if (!googleConfigured) {
     // webClientId is what Supabase validates the ID token's audience against.
-    GoogleSignin.configure({
+    google.GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
       iosClientId: GOOGLE_IOS_CLIENT_ID,
     })
     googleConfigured = true
   }
+  return google
 }
 
 export async function getGoogleIdToken(): Promise<string | null> {
-  ensureGoogleConfigured()
+  const { GoogleSignin, isErrorWithCode, isSuccessResponse, statusCodes } =
+    ensureGoogleConfigured()
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
 
   try {
@@ -51,11 +68,11 @@ export async function getGoogleIdToken(): Promise<string | null> {
 }
 
 export async function signOutGoogle() {
-  if (!googleConfigured) {
+  if (!googleConfigured || !googleModule) {
     return
   }
   try {
-    await GoogleSignin.signOut()
+    await googleModule.GoogleSignin.signOut()
   } catch {
     // Not signed in with Google; nothing to do.
   }
