@@ -378,7 +378,8 @@ export function useUploadMedia() {
         throw uploadError
       }
 
-      // Create media record (moderation_status defaults to 'pending')
+      // Create media record. Auto-approved until a moderation step
+      // exists (see migration 013); friends only see 'approved' media.
       const { data, error: dbError } = await supabase
         .from('event_media')
         .insert({
@@ -388,7 +389,7 @@ export function useUploadMedia() {
           storage_path: storagePath,
           mime_type: mimeType,
           file_size_bytes: bytes.byteLength,
-          moderation_status: 'pending',
+          moderation_status: 'approved',
           sort_order: 0
         })
         .select()
