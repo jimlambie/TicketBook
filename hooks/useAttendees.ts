@@ -116,6 +116,40 @@ export function useTagFriend() {
   })
 }
 
+export function useTagFriends() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      taggedUserIds,
+      taggedByUserId,
+    }: {
+      eventId: string
+      taggedUserIds: string[]
+      taggedByUserId: string
+    }) => {
+      if (taggedUserIds.length === 0) {
+        return
+      }
+      const { error } = await supabase.from('event_attendees').insert(
+        taggedUserIds.map(taggedUserId => ({
+          event_id: eventId,
+          tagged_user_id: taggedUserId,
+          tagged_by_user_id: taggedByUserId,
+          status: 'pending' as const,
+        }))
+      )
+      if (error) {
+        throw error
+      }
+    },
+    onSuccess: (_data, { eventId }) => {
+      queryClient.invalidateQueries({ queryKey: attendeeKeys.event(eventId) })
+    },
+  })
+}
+
 export function useRespondToTag() {
   const queryClient = useQueryClient()
 
