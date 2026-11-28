@@ -1,14 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
-import type { EventAttendee, User } from '@/lib/database.types'
+import { eventKeys } from '@/hooks/useEvents'
+import type { EventAttendee, EventFeedRow, User } from '@/lib/database.types'
 
 export type AttendeeRow = EventAttendee & {
   tagged_user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'> | null
   tagged_by: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'> | null
 }
 
-const attendeeKeys = {
+export const attendeeKeys = {
   all: ['attendees'] as const,
   event: (eventId: string) => [...attendeeKeys.all, 'event', eventId] as const,
   pending: (userId: string) => [...attendeeKeys.all, 'pending', userId] as const,
@@ -62,22 +63,58 @@ export function useEventAttendees(eventId: string) {
 // MY PENDING TAGS
 // ============================================================
 
+export type PendingTag = EventAttendee & {
+  event: Pick<EventFeedRow, 'id' | 'title' | 'event_date' | 'type'> | null
+  tagged_by: Pick<User, 'id' | 'username'> | null
+}
+
 export function useMyPendingTags() {
   const { supabaseUser } = useAuthStore()
 
   return useQuery({
     queryKey: attendeeKeys.pending(supabaseUser?.id ?? ''),
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: async (): Promise<PendingTag[]> => {
+      const { data: tags, error } = await supabase
         .from('event_attendees')
         .select('*')
         .eq('tagged_user_id', supabaseUser!.id)
         .eq('status', 'pending')
+        .order('created_at', { ascending: false })
 
       if (error) {
         throw error
       }
-      return data ?? []
+      if (!tags?.length) {
+        return []
+      }
+
+      const [eventsRes, usersRes] = await Promise.all([
+        supabase
+          .from('events_feed')
+          .select('id, title, event_date, type')
+          .in('id', [...new Set(tags.map(t => t.event_id))])
+          .is('deleted_at', null),
+        supabase
+          .from('users')
+          .select('id, username')
+          .in('id', [...new Set(tags.map(t => t.tagged_by_user_id))]),
+      ])
+
+      if (eventsRes.error) {
+        throw eventsRes.error
+      }
+
+      const eventMap = new Map((eventsRes.data ?? []).map(e => [e.id, e]))
+      const userMap = new Map((usersRes.data ?? []).map(u => [u.id, u]))
+
+      return tags
+        .map(t => ({
+          ...t,
+          event: eventMap.get(t.event_id) ?? null,
+          tagged_by: userMap.get(t.tagged_by_user_id) ?? null,
+        }))
+        // Hide tags on events that have since been deleted.
+        .filter(t => t.event !== null)
     },
     enabled: !!supabaseUser,
   })
@@ -154,6 +191,7 @@ export function useRespondToTag() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    // Returns the id of the user's own stub when accepting (new or existing).
     mutationFn: async ({
       attendeeId,
       eventId: _eventId,
@@ -162,18 +200,36 @@ export function useRespondToTag() {
       attendeeId: string
       eventId: string
       accept: boolean
-    }) => {
+    }): Promise<string | null> => {
+      if (accept) {
+        const { data, error } = await supabase.rpc('confirm_event_tag', {
+          p_attendee_id: attendeeId,
+        })
+        if (error) {
+          throw error
+        }
+        return data
+      }
+
       const { error } = await supabase
         .from('event_attendees')
-        .update({ status: accept ? 'confirmed' : 'declined' })
+        .update({ status: 'declined' })
         .eq('id', attendeeId)
       if (error) {
         throw error
       }
+      return null
     },
-    onSuccess: (_data, { eventId }) => {
+    onSuccess: (_data, { eventId, accept }) => {
       queryClient.invalidateQueries({ queryKey: attendeeKeys.event(eventId) })
       queryClient.invalidateQueries({ queryKey: attendeeKeys.all })
+      if (accept) {
+        // A new stub may have been added to the user's archive.
+        queryClient.invalidateQueries({ queryKey: eventKeys.all })
+        queryClient.invalidateQueries({ queryKey: ['stats-screen'] })
+        queryClient.invalidateQueries({ queryKey: ['archive-insights'] })
+        queryClient.invalidateQueries({ queryKey: ['year-in-review'] })
+      }
     },
   })
 }
