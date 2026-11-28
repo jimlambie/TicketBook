@@ -3,11 +3,11 @@
 // account:
 //   1. Revokes their Sign in with Apple token, if an authorization code
 //      is supplied (required by Apple when an app offers Apple sign-in)
-//   2. Removes their files from the event-media and avatars buckets
-//   3. Deletes the auth user, which cascades to public.users and all of
+//   2. Deletes the auth user, which cascades to public.users and all of
 //      their events, media rows, notes, friendships, tags and stats.
 //      Friends' stubs copied from their events are kept
 //      (events.source_event_id is set null).
+//   3. Removes their files from the event-media and avatars buckets
 //
 // Required secrets for Apple revocation:
 //   APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY (.p8 contents),
@@ -200,17 +200,20 @@ Deno.serve(async (req: Request) => {
     console.warn('delete-account: no Apple authorization code', user.id)
   }
 
+  // Delete the account first: if that fails, nothing has been lost and the
+  // user can retry. Files are removed afterwards.
+  const { error: deleteError } = await admin.auth.admin.deleteUser(user.id)
+  if (deleteError) {
+    console.error('delete-account: deleteUser failed', user.id, deleteError)
+    return json({ error: 'delete_failed', detail: deleteError.message }, 500)
+  }
+
+  // The account is gone, so report success even if file cleanup fails;
+  // leftover files are logged for manual removal.
   try {
     await deleteUserFiles(admin, user.id)
-
-    const { error: deleteError } = await admin.auth.admin.deleteUser(user.id)
-    if (deleteError) {
-      throw deleteError
-    }
   } catch (e) {
-    console.error('delete-account failed', user.id, e)
-    const message = e instanceof Error ? e.message : String(e)
-    return json({ error: 'delete_failed', detail: message }, 500)
+    console.error('delete-account: file cleanup failed', user.id, e)
   }
 
   return json({ ok: true })
