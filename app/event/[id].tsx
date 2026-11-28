@@ -373,11 +373,11 @@ function MediaSection({
       {ticket && (
         <TouchableOpacity
           style={s.ticketImageWrap}
-          onPress={() => setLightboxUri(ticket.publicUrl)}
+          onPress={() => setLightboxUri(ticket.url)}
           activeOpacity={0.9}
         >
           <Image
-            source={{ uri: ticket.publicUrl }}
+            source={{ uri: ticket.url }}
             style={s.ticketImage}
             resizeMode="cover"
           />
@@ -389,11 +389,11 @@ function MediaSection({
           {photos.map(photo => (
             <TouchableOpacity
               key={photo.id}
-              onPress={() => setLightboxUri(photo.publicUrl)}
+              onPress={() => setLightboxUri(photo.url)}
               activeOpacity={0.9}
             >
               <Image
-                source={{ uri: photo.publicUrl }}
+                source={{ uri: photo.url }}
                 style={s.photoThumb}
                 resizeMode="cover"
               />

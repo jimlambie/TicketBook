@@ -318,7 +318,7 @@ function EditForm({ event, id, initialNotes }: {
                 {existingPhotos.map(photo => (
                   <Image
                     key={photo.id}
-                    source={{ uri: photo.publicUrl }}
+                    source={{ uri: photo.url }}
                     style={s.photoThumb}
                     resizeMode="cover"
                   />
