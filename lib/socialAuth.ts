@@ -67,6 +67,17 @@ export async function getGoogleIdToken(): Promise<string | null> {
   }
 }
 
+// Revoke the app's Google access when an account is deleted. Best effort:
+// the account is deleted server-side regardless.
+export async function revokeGoogleAccess() {
+  try {
+    const { GoogleSignin } = ensureGoogleConfigured()
+    await GoogleSignin.revokeAccess()
+  } catch {
+    // Module missing, not configured, or not signed in with Google.
+  }
+}
+
 export async function signOutGoogle() {
   if (!googleConfigured || !googleModule) {
     return
@@ -108,6 +119,21 @@ export async function getAppleCredential(): Promise<AppleCredential | null> {
       .filter(Boolean)
       .join(' ')
     return { idToken: credential.identityToken, nonce, fullName: fullName || null }
+  } catch (e: any) {
+    if (e?.code === 'ERR_REQUEST_CANCELED') {
+      return null
+    }
+    throw e
+  }
+}
+
+// A fresh authorization code, which the delete-account function exchanges
+// for a refresh token and revokes (required by Apple on account deletion).
+// Returns null if the user cancels.
+export async function getAppleAuthorizationCode(): Promise<string | null> {
+  try {
+    const credential = await AppleAuthentication.signInAsync({ requestedScopes: [] })
+    return credential.authorizationCode ?? null
   } catch (e: any) {
     if (e?.code === 'ERR_REQUEST_CANCELED') {
       return null

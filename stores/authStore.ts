@@ -4,7 +4,14 @@ import { supabase } from '@/lib/supabase'
 import { User } from '@/lib/database.types'
 import { usePurchasesStore } from '@/stores/purchasesStore'
 import { PREMIUM_ENABLED } from '@/lib/features'
-import { getAppleCredential, getGoogleIdToken, signOutGoogle } from '@/lib/socialAuth'
+import { Platform } from 'react-native'
+import {
+  getAppleAuthorizationCode,
+  getAppleCredential,
+  getGoogleIdToken,
+  revokeGoogleAccess,
+  signOutGoogle
+} from '@/lib/socialAuth'
 
 // 'new' means the account was just created and still needs a username.
 export type SocialSignInResult = 'cancelled' | 'new' | 'existing'
@@ -22,6 +29,8 @@ interface AuthState {
   signInWithGoogle: () => Promise<SocialSignInResult>
   signInWithApple: () => Promise<SocialSignInResult>
   signOut: () => Promise<void>
+  // Resolves false if the user cancelled the Apple re-authentication.
+  deleteAccount: () => Promise<boolean>
   updateProfile: (updates: Partial<User>) => Promise<void>
   fetchProfile: (userId: string) => Promise<void>
 }
@@ -193,6 +202,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profile: null,
       isOnboarded: false
     })
+  },
+
+  deleteAccount: async () => {
+    const { supabaseUser } = get()
+    if (!supabaseUser) {
+      throw new Error('Not signed in')
+    }
+    const providers = (supabaseUser.identities ?? []).map(i => i.provider)
+
+    // Apple requires revoking the Sign in with Apple token. That needs a
+    // fresh authorization code, which only iOS can provide.
+    let appleAuthorizationCode: string | undefined
+    if (providers.includes('apple') && Platform.OS === 'ios') {
+      const code = await getAppleAuthorizationCode()
+      if (!code) {
+        return false
+      }
+      appleAuthorizationCode = code
+    }
+
+    const { error } = await supabase.functions.invoke('delete-account', {
+      body: { appleAuthorizationCode }
+    })
+    if (error) {
+      throw error
+    }
+
+    if (providers.includes('google')) {
+      await revokeGoogleAccess()
+    }
+
+    // The user no longer exists server-side; clear the local session.
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch {
+      // Nothing to do.
+    }
+    await signOutGoogle()
+    set({
+      session: null,
+      supabaseUser: null,
+      profile: null,
+      isOnboarded: false
+    })
+    return true
   },
 
   updateProfile: async (updates: Partial<User>) => {

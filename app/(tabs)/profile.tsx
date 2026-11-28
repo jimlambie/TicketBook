@@ -324,6 +324,16 @@ export default function ProfileScreen() {
         <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut} activeOpacity={0.7}>
           <Text style={s.signOutText}>sign out</Text>
         </TouchableOpacity>
+
+        {/* Delete account */}
+        <TouchableOpacity
+          style={s.deleteAccountBtn}
+          onPress={() => router.push('/account/delete' as any)}
+          activeOpacity={0.7}
+          hitSlop={8}
+        >
+          <Text style={s.deleteAccountText}>delete account</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Edit profile bottom sheet */}
@@ -614,7 +624,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     marginHorizontal: 16,
-    marginBottom: 40,
+    marginBottom: 12,
     borderRadius: 10,
     borderWidth: 0.5,
     borderColor: C.border2,
@@ -623,6 +633,16 @@ const s = StyleSheet.create({
     fontFamily: F.mono,
     fontSize: 13,
     color: C.muted,
+  },
+  deleteAccountBtn: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+    marginBottom: 40,
+  },
+  deleteAccountText: {
+    fontFamily: F.mono,
+    fontSize: 11,
+    color: C.red,
   },
   // Edit modal
   overlay: {
