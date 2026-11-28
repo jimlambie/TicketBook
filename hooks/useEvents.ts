@@ -8,6 +8,7 @@ import { File as ExpoFile } from 'expo-file-system'
 import { supabase } from '@/lib/supabase'
 import { Event, EventFeedRow, EventType } from '@/lib/database.types'
 import { useAuthStore } from '@/stores/authStore'
+import { eventSearchFilter } from '@/lib/searchFilter'
 
 const EVENTS_PER_PAGE = 20
 
@@ -51,12 +52,6 @@ const FEED_SELECT =
   '*, sport_details(home_team,away_team,home_score,away_score,competition,season,lineups)'
 
 export type SearchScope = 'mine' | 'friends'
-
-// Quote a value for use inside a PostgREST `or=(...)` filter so commas,
-// parentheses and dots in user input aren't parsed as filter syntax.
-function quoteFilterValue(value: string): string {
-  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-}
 
 async function fetchFriendIds(userId: string): Promise<string[]> {
   const { data, error } = await supabase
@@ -153,11 +148,9 @@ export function useSearchEvents({
         q = q.in('user_id', ids).in('visibility', ['public', 'friends'])
       }
 
-      if (trimmed) {
-        const pattern = quoteFilterValue(`%${trimmed}%`)
-        q = q.or(
-          `artist_name.ilike.${pattern},venue_name.ilike.${pattern},city.ilike.${pattern}`
-        )
+      const filter = eventSearchFilter(trimmed)
+      if (filter) {
+        q = q.or(filter)
       }
 
       if (type && type !== 'all') {
