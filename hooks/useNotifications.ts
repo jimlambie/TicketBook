@@ -2,8 +2,11 @@ import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import type * as NotificationsModule from 'expo-notifications'
 import Constants, { AppOwnership } from 'expo-constants'
+import { router } from 'expo-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import { attendeeKeys } from '@/hooks/useAttendees'
 
 // expo-notifications throws at import time on Android when running inside
 // Expo Go (removed from Expo Go in SDK 53+), which crashes the whole module
@@ -54,8 +57,22 @@ async function registerForPushNotificationsAsync(
   }
 }
 
+// Responses already acted on, so the cold-start response isn't replayed
+// when the effect re-runs (e.g. sign out and back in).
+const handledResponseIds = new Set<string>()
+
+function eventIdFromResponse(
+  response: NotificationsModule.NotificationResponse
+): string | null {
+  const data = response.notification.request.content.data as
+    | { eventId?: unknown }
+    | undefined
+  return typeof data?.eventId === 'string' ? data.eventId : null
+}
+
 export function useSetupNotifications() {
   const { supabaseUser } = useAuthStore()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (isExpoGo || !supabaseUser) {
@@ -63,7 +80,7 @@ export function useSetupNotifications() {
     }
 
     let cancelled = false
-    let sub: { remove: () => void } | undefined
+    const subs: { remove: () => void }[] = []
 
     import('expo-notifications').then(Notifications => {
       if (cancelled) {
@@ -95,14 +112,44 @@ export function useSetupNotifications() {
           })
       })
 
-      sub = Notifications.addNotificationReceivedListener(notification => {
-        console.log('[notifications] received:', notification.request.content.title)
+      // Tag notifications carry { eventId }: open that event so the user
+      // can confirm or decline.
+      const openFromResponse = (response: NotificationsModule.NotificationResponse) => {
+        const responseId = response.notification.request.identifier
+        if (handledResponseIds.has(responseId)) {
+          return
+        }
+        handledResponseIds.add(responseId)
+
+        const eventId = eventIdFromResponse(response)
+        if (!eventId) {
+          return
+        }
+        queryClient.invalidateQueries({ queryKey: attendeeKeys.all })
+        router.push(`/event/${eventId}`)
+      }
+
+      // Cold start: the app was launched by tapping a notification.
+      Notifications.getLastNotificationResponseAsync().then(response => {
+        if (cancelled || !response) {
+          return
+        }
+        openFromResponse(response)
+        Notifications.clearLastNotificationResponseAsync().catch(() => {})
       })
+
+      // Warm start: tapped while the app was running or backgrounded.
+      subs.push(Notifications.addNotificationResponseReceivedListener(openFromResponse))
+
+      subs.push(Notifications.addNotificationReceivedListener(() => {
+        // A new tag may have arrived; refresh the pending tags list.
+        queryClient.invalidateQueries({ queryKey: attendeeKeys.all })
+      }))
     })
 
     return () => {
       cancelled = true
-      sub?.remove()
+      subs.forEach(sub => sub.remove())
     }
     // Depends on the user id, not the supabaseUser object, so an unrelated
     // store update with the same user doesn't re-register notifications.

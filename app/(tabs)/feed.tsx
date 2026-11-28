@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useMyFeed, useFriendsFeed, useSearchEvents } from '@/hooks/useEvents'
 import { useFriends } from '@/hooks/useFriends'
+import { useMyPendingTags, type PendingTag } from '@/hooks/useAttendees'
 import EventCard from '@/components/EventCard'
 import SportCard from '@/components/SportCard'
 import type { CardOwner } from '@/components/OwnerBadge'
@@ -62,6 +63,7 @@ export default function FeedScreen() {
   }, []))
 
   const { data: friends = [] } = useFriends()
+  const { data: pendingTags = [] } = useMyPendingTags()
 
   const friendOptions = useMemo<FriendOption[]>(() => {
     return friends
@@ -329,6 +331,17 @@ export default function FeedScreen() {
             />
           ) : undefined
         }
+        ListHeaderComponent={
+          activeTab === 'mine' && !showSearchResults && pendingTags.length > 0
+            ? <PendingTags
+                tags={pendingTags}
+                onOpen={eventId => {
+                  returningFromEventRef.current = true
+                  router.push(`/event/${eventId}`)
+                }}
+              />
+            : null
+        }
         ListEmptyComponent={
           !showSearchResults || !searchResults.isLoading
             ? <EmptyState
@@ -346,6 +359,39 @@ export default function FeedScreen() {
         }
       />
     </SafeAreaView>
+  )
+}
+
+function PendingTags({
+  tags,
+  onOpen,
+}: {
+  tags: PendingTag[]
+  onOpen: (eventId: string) => void
+}) {
+  return (
+    <View style={s.pendingBlock}>
+      <Text style={s.pendingLabel}>
+        {tags.length === 1 ? '1 tag to confirm' : `${tags.length} tags to confirm`}
+      </Text>
+      {tags.map((t, i) => (
+        <TouchableOpacity
+          key={t.id}
+          style={[s.pendingRow, i > 0 && s.pendingRowDivider]}
+          onPress={() => onOpen(t.event_id)}
+          activeOpacity={0.7}
+        >
+          <View style={s.pendingText}>
+            <Text style={s.pendingTitle} numberOfLines={1}>{t.event?.title}</Text>
+            <Text style={s.pendingMeta} numberOfLines={1}>
+              @{t.tagged_by?.username ?? '?'} tagged you
+              {t.event?.event_date ? ` · ${t.event.event_date.slice(0, 4)}` : ''}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={C.muted} />
+        </TouchableOpacity>
+      ))}
+    </View>
   )
 }
 
@@ -546,6 +592,49 @@ const s = StyleSheet.create({
     fontFamily: F.monoMedium,
     fontSize: 8,
     color: C.text,
+  },
+  // Pending tags
+  pendingBlock: {
+    backgroundColor: 'rgba(232,197,71,0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(232,197,71,0.25)',
+    borderRadius: C.radius,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+    marginBottom: 12,
+  },
+  pendingLabel: {
+    fontFamily: F.mono,
+    fontSize: 9,
+    color: C.accent,
+    letterSpacing: 0.08 * 9,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 8,
+  },
+  pendingRowDivider: {
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(232,197,71,0.15)',
+  },
+  pendingText: {
+    flex: 1,
+    gap: 2,
+  },
+  pendingTitle: {
+    fontFamily: F.display,
+    fontSize: 14,
+    color: C.text,
+  },
+  pendingMeta: {
+    fontFamily: F.mono,
+    fontSize: 11,
+    color: C.muted,
   },
   // Year headers
   yearHeader: {

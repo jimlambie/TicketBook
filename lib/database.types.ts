@@ -173,6 +173,7 @@ export interface Database {
           rating: number | null
           review_text: string | null
           stub_number: number | null
+          source_event_id: string | null
           deleted_at: string | null
           created_at: string
           updated_at: string
@@ -193,6 +194,7 @@ export interface Database {
           rating?: number | null
           review_text?: string | null
           stub_number?: number | null
+          source_event_id?: string | null
           deleted_at?: string | null
           created_at?: string
           updated_at?: string
@@ -368,7 +370,7 @@ export interface Database {
         Relationships: []
       }
       events_feed: {
-        Row: Database['public']['Tables']['events']['Row'] & {
+        Row: Omit<Database['public']['Tables']['events']['Row'], 'source_event_id'> & {
           artist_canonical_name: string | null
           artist_slug: string | null
           artist_image_url: string | null
@@ -434,6 +436,10 @@ export interface Database {
       set_event_notes: {
         Args: { p_event_id: string; p_notes: string | null }
         Returns: void
+      }
+      confirm_event_tag: {
+        Args: { p_attendee_id: string }
+        Returns: string
       }
     }
     Enums: {

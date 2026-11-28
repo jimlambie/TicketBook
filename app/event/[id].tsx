@@ -511,6 +511,9 @@ function AttendeesSection({
   const [tagModalOpen, setTagModalOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [tagError, setTagError] = useState<string | null>(null)
+  const [respondError, setRespondError] = useState<string | null>(null)
+  // Set after confirming: the id of the viewer's own stub for this event.
+  const [ownStubId, setOwnStubId] = useState<string | null>(null)
   const { data: attendees = [] } = useEventAttendees(eventId)
   const { data: friends = [] } = useFriends()
   const tagFriends = useTagFriends()
@@ -527,8 +530,22 @@ function AttendeesSection({
   const taggedUserIds = new Set(attendees.map(a => a.tagged_user_id))
   const taggableFriends = friends.filter(f => !taggedUserIds.has(f.id))
 
-  if (!isOwner && !myPending && confirmed.length === 0) {
+  if (!isOwner && !myPending && !ownStubId && confirmed.length === 0) {
     return null
+  }
+
+  async function respond(attendeeId: string, accept: boolean) {
+    setRespondError(null)
+    try {
+      const stubId = await respondToTag.mutateAsync({ attendeeId, eventId, accept })
+      if (stubId) {
+        setOwnStubId(stubId)
+      }
+    } catch {
+      setRespondError(
+        accept ? 'Couldn’t confirm this tag. Try again.' : 'Couldn’t decline this tag. Try again.'
+      )
+    }
   }
 
   function openTagSheet() {
@@ -574,27 +591,47 @@ function AttendeesSection({
           <Text style={s.tagBannerText}>
             @{myPending.tagged_by?.username ?? '?'} tagged you here
           </Text>
+          <Text style={s.tagBannerHint}>
+            Confirming adds this event to your stubs.
+          </Text>
           <View style={s.tagBannerBtns}>
             <TouchableOpacity
-              style={s.tagBannerAccept}
-              onPress={() =>
-                respondToTag.mutate({ attendeeId: myPending.id, eventId, accept: true })
-              }
+              style={[s.tagBannerAccept, respondToTag.isPending && s.tagSheetSubmitDisabled]}
+              onPress={() => respond(myPending.id, true)}
+              disabled={respondToTag.isPending}
               activeOpacity={0.7}
             >
-              <Text style={s.tagBannerAcceptText}>Confirm</Text>
+              {respondToTag.isPending && respondToTag.variables?.accept ? (
+                <ActivityIndicator color={C.bg} size="small" />
+              ) : (
+                <Text style={s.tagBannerAcceptText}>Confirm</Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={s.tagBannerDecline}
-              onPress={() =>
-                respondToTag.mutate({ attendeeId: myPending.id, eventId, accept: false })
-              }
+              onPress={() => respond(myPending.id, false)}
+              disabled={respondToTag.isPending}
               activeOpacity={0.7}
             >
               <Text style={s.tagBannerDeclineText}>Decline</Text>
             </TouchableOpacity>
           </View>
+          {!!respondError && <Text style={s.tagSheetError}>{respondError}</Text>}
         </View>
+      )}
+
+      {!!ownStubId && ownStubId !== eventId && (
+        <TouchableOpacity
+          style={s.tagBanner}
+          onPress={() => router.push(`/event/${ownStubId}`)}
+          activeOpacity={0.7}
+        >
+          <View style={s.attendeeRow}>
+            <Ionicons name="checkmark-circle" size={14} color={C.green} />
+            <Text style={s.tagBannerText}>In your stubs</Text>
+          </View>
+          <Text style={s.tagBannerLink}>view your stub →</Text>
+        </TouchableOpacity>
       )}
 
       {confirmed.map(a => (
@@ -1069,6 +1106,17 @@ const s = StyleSheet.create({
     fontFamily: F.mono,
     fontSize: 12,
     color: C.text,
+  },
+  tagBannerHint: {
+    fontFamily: F.mono,
+    fontSize: 11,
+    color: C.muted,
+    marginTop: -4,
+  },
+  tagBannerLink: {
+    fontFamily: F.mono,
+    fontSize: 12,
+    color: C.accent,
   },
   tagBannerBtns: {
     flexDirection: 'row',
